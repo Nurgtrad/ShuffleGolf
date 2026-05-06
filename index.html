@@ -67,14 +67,14 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #meter-power{flex:1}
 #meter-aim{flex:1}
 .meter-label{font-size:9px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px}
-.meter-track{height:10px;background:var(--surface2);border-radius:5px;border:1px solid var(--border);position:relative;overflow:hidden;cursor:pointer}
+.meter-track{height:10px;background:var(--surface2);border-radius:5px;border:1px solid var(--border);position:relative;overflow:hidden;}
 .meter-fill{height:100%;border-radius:4px;transition:none;position:absolute;top:0;left:0}
 #power-fill{background:linear-gradient(to right,#3d9a3d,#a8d878,#d4a832,#e84832)}
 #aim-fill{background:var(--accent);width:4px;left:50%;transform:translateX(-50%);border-radius:2px}
 #aim-cursor{position:absolute;top:-3px;width:10px;height:16px;background:var(--accent);border-radius:3px;transform:translateX(-50%);left:50%}
 .meter-action{margin-top:6px;font-size:9px;letter-spacing:0.1em;color:var(--text-muted);text-align:center}
 
-#shoot-btn{padding:10px 22px;background:var(--accent);color:#0a150a;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;font-weight:500;transition:all 0.15s;align-self:flex-end;min-width:80px}
+#shoot-btn{padding:10px 22px;background:var(--accent);color:#0a150a;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;font-weight:500;transition:all 0.15s;align-self:flex-end;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none;}
 #shoot-btn:hover:not(:disabled){background:#c0e890;transform:scale(1.02)}
 #shoot-btn:disabled{background:var(--surface2);color:var(--text-muted);cursor:not-allowed;transform:none}
 
@@ -106,7 +106,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
   .card-type { font-size: 7px; top: 4px; right: 4px; }
   .hud-value { font-size: 18px; }
   #bottom { padding: 10px 10px 14px; }
-  #shoot-btn { padding: 10px 16px; min-width: 70px; font-size: 10px; }
+  #shoot-btn { padding: 10px 12px; min-width: 70px; font-size: 10px; }
   #cards-row { gap: 4px; }
   #score-table{grid-template-columns:1fr;}
 }
@@ -146,9 +146,9 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
     </div>
     <div id="cards-row"></div>
     <div id="meters-row">
-      <div id="meter-power"><div class="meter-label">Fuerza</div><div class="meter-track" id="power-track"><div class="meter-fill" id="power-fill" style="width:0%"></div></div><div class="meter-action">Mantén ESPACIO / toca</div></div>
-      <div id="meter-aim"><div class="meter-label">Dirección</div><div class="meter-track" id="aim-track" style="overflow:visible"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:16px;background:var(--border);border-radius:1px"></div><div id="aim-cursor"></div></div><div class="meter-action">Pulsa cuando esté centrado</div></div>
-      <button id="shoot-btn" disabled>Golpear</button>
+      <div id="meter-power"><div class="meter-label">Fuerza</div><div class="meter-track" id="power-track"><div class="meter-fill" id="power-fill" style="width:0%"></div></div><div class="meter-action">Mantén botón / ESPACIO</div></div>
+      <div id="meter-aim"><div class="meter-label">Dirección</div><div class="meter-track" id="aim-track" style="overflow:visible"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:16px;background:var(--border);border-radius:1px"></div><div id="aim-cursor"></div></div><div class="meter-action">Pulsa botón / ESPACIO</div></div>
+      <button id="shoot-btn" disabled>GOLPEAR</button>
     </div>
   </div>
 
@@ -206,6 +206,15 @@ const INITIAL_COLLECTION = [
   {name:'Runner',   icon:'💨', effect:'runner',   desc:'Doble rodadura', type:'ball'},
 ];
 
+const BASE_BALL_EFFECTS = [
+  {icon:'🎱', effect:'control',  desc:'Menos desvío'},
+  {icon:'💥', effect:'power',    desc:'+20% dist.'},
+  {icon:'↩',  effect:'backroll', desc:'Retroceso'},
+  {icon:'📍', effect:'fallstop', desc:'0 rodadura'},
+  {icon:'🪨', effect:'heavy',    desc:'Ignora viento'},
+  {icon:'💨', effect:'runner',   desc:'Doble rodadura'},
+];
+
 const PUTTER_CARD = {name:'Putt', dist:30, icon:'🕳', type:'club', isPutt:true};
 
 // Layout de pares clásico de 18 hoyos (Par 72)
@@ -232,7 +241,6 @@ let state = {
   powerVal: 0, powerDir: 1, powerHeld: false,
   aimVal: 0.5, aimDir: 1,
   ballAnim: null,
-  fairwayPath: null, roughPath: null,
   
   draftingLimits: { expected: 15, current: [] }
 };
@@ -263,24 +271,19 @@ function updateAimTarget(e) {
 $('c-ui').addEventListener('pointerdown', updateAimTarget);
 $('c-ui').addEventListener('pointermove', (e) => { if(e.buttons > 0) updateAimTarget(e); });
 
-// ─── PROCEDURAL COURSE (ILLUSION OF DISTANCE) ────────────────────────────────
+// ─── PROCEDURAL COURSE (NO PATH2D, UNIVERSAL COMPATIBILITY) ──────────────────
 function generateHole(holeIndex) {
   const W = cCourse.width, H = cCourse.height;
   const par = HOLE_PARS[holeIndex];
   
-  // Par 3 = ~150m, Par 4 = ~350m, Par 5 = ~500m (Logical distance)
   let logicalDist = par === 3 ? 150 + Math.random()*40 : par === 4 ? 320 + Math.random()*80 : 480 + Math.random()*60;
-  
-  // Handicap/Difficulty factor (0 to 1)
   const difficulty = holeIndex / 17;
   
-  // LA MAGIA: Tee y Hoyo SIEMPRE están visualmente en el mismo sitio.
-  // La 'escala' cambia para que 100m en un Par 5 se vea como un saltito.
   const visualLengthPx = H * 0.57; 
   const scale = visualLengthPx / logicalDist;
   
   const teeX = W/2, teeY = H * 0.75;
-  const holeX = W/2 + (Math.random()-0.5)*W*(0.2 + difficulty*0.2); // Más desvío en hoyos altos
+  const holeX = W/2 + (Math.random()-0.5)*W*(0.2 + difficulty*0.2);
   const holeY = teeY - visualLengthPx;
   
   const cp1x = W/2 + (Math.random()-0.5)*W*0.3;
@@ -288,10 +291,8 @@ function generateHole(holeIndex) {
   const cp2x = (holeX + W/2)/2 + (Math.random()-0.5)*W*(0.1 + difficulty*0.2);
   const cp2y = teeY - visualLengthPx*0.6;
   
-  // Fairway width shrinks slightly with difficulty
   const fairwayW = (80 - difficulty*20) + Math.random()*20;
   
-  // Sand traps increase with difficulty
   let sandTraps = [];
   const numSand = (par === 3 ? 0 : 1) + Math.floor(difficulty * 3) + (Math.random()>0.5?1:0);
   for(let i=0;i<numSand;i++) {
@@ -306,7 +307,6 @@ function generateHole(holeIndex) {
     });
   }
   
-  // Green shrinks with difficulty
   const greenR = 45 - difficulty*15 + Math.random()*5;
   
   return { par, holeLength: logicalDist, scale, difficulty, teeX, teeY, holeX, holeY, cp1x, cp1y, cp2x, cp2y, fairwayW, sandTraps, greenR };
@@ -315,8 +315,7 @@ function generateHole(holeIndex) {
 function bezierPoint(p0,p1,p2,p3,t) { return (1-t)**3*p0 + 3*(1-t)**2*t*p1 + 3*(1-t)*t**2*p2 + t**3*p3; }
 function bezierTangent(p0,p1,p2,p3,t) { return 3*(1-t)**2*(p1-p0) + 6*(1-t)*t*(p2-p1) + 3*t**2*(p3-p2); }
 
-function buildFairwayPath(hd, expand) {
-  const path = new Path2D();
+function tracePath(ctx, hd, expand) {
   const ptsLeft = [], ptsRight = [];
   for(let t=0; t<=1.01; t+=0.02) {
       const tt = Math.min(t, 1);
@@ -335,55 +334,75 @@ function buildFairwayPath(hd, expand) {
       ptsRight.unshift({x: bx - nx*w, y: by - ny*w});
   }
   const pts = [...ptsLeft, ...ptsRight];
-  path.moveTo(pts[0].x, pts[0].y);
-  for(let i=1; i<pts.length; i++) path.lineTo(pts[i].x, pts[i].y);
-  path.closePath();
-  return path;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
 }
 
 function getTerrain(x, y) {
-  const hd = state.holeData;
-  const dxG = x - hd.holeX, dyG = y - hd.holeY;
-  if (Math.sqrt(dxG*dxG + dyG*dyG) <= hd.greenR + 6) return 'green';
-  
-  let inSand = false;
-  hd.sandTraps.forEach(s => {
-    const nx = x - s.cx, ny = y - s.cy;
-    const rdx = nx * Math.cos(-s.angle) - ny * Math.sin(-s.angle);
-    const rdy = nx * Math.sin(-s.angle) + ny * Math.cos(-s.angle);
-    if ((rdx*rdx)/(s.rx*s.rx) + (rdy*rdy)/(s.ry*s.ry) <= 1) inSand = true;
-  });
-  if (inSand) return 'sand';
-  if (state.fairwayPath && ctxC.isPointInPath(state.fairwayPath, x, y)) return 'fairway';
-  return 'rough';
+  try {
+    const hd = state.holeData;
+    if(!hd) return 'fairway';
+    const dxG = x - hd.holeX, dyG = y - hd.holeY;
+    if (Math.sqrt(dxG*dxG + dyG*dyG) <= hd.greenR + 6) return 'green';
+    
+    let inSand = false;
+    hd.sandTraps.forEach(s => {
+      const nx = x - s.cx, ny = y - s.cy;
+      const rdx = nx * Math.cos(-s.angle) - ny * Math.sin(-s.angle);
+      const rdy = nx * Math.sin(-s.angle) + ny * Math.cos(-s.angle);
+      if ((rdx*rdx)/(s.rx*s.rx) + (rdy*rdy)/(s.ry*s.ry) <= 1) inSand = true;
+    });
+    if (inSand) return 'sand';
+    
+    tracePath(ctxC, hd, 0);
+    if (ctxC.isPointInPath(x, y)) return 'fairway';
+    
+    return 'rough';
+  } catch(e) {
+    return 'fairway'; // Safe fallback
+  }
 }
 
-function createFairwayPattern() {
-  const pCanvas = document.createElement('canvas');
-  pCanvas.width = 40; pCanvas.height = 40;
-  const pCtx = pCanvas.getContext('2d');
-  pCtx.fillStyle = '#315424'; pCtx.fillRect(0,0,40,40);
-  pCtx.fillStyle = '#2b4d1f';
-  pCtx.beginPath(); pCtx.moveTo(0, 40); pCtx.lineTo(40, 0); pCtx.lineTo(40, 20); pCtx.lineTo(20, 40); pCtx.fill();
-  pCtx.beginPath(); pCtx.moveTo(0, 20); pCtx.lineTo(20, 0); pCtx.lineTo(0, 0); pCtx.fill();
-  return pCtx.canvas;
+let cachedPattern = null;
+function getFairwayPattern(ctx) {
+  if(cachedPattern) return cachedPattern;
+  try {
+    const pCanvas = document.createElement('canvas');
+    pCanvas.width = 40; pCanvas.height = 40;
+    const pCtx = pCanvas.getContext('2d');
+    pCtx.fillStyle = '#315424'; pCtx.fillRect(0,0,40,40);
+    pCtx.fillStyle = '#2b4d1f';
+    pCtx.beginPath(); pCtx.moveTo(0, 40); pCtx.lineTo(40, 0); pCtx.lineTo(40, 20); pCtx.lineTo(20, 40); pCtx.fill();
+    pCtx.beginPath(); pCtx.moveTo(0, 20); pCtx.lineTo(20, 0); pCtx.lineTo(0, 0); pCtx.fill();
+    cachedPattern = ctx.createPattern(pCanvas, 'repeat');
+    return cachedPattern;
+  } catch(e) {
+    return null;
+  }
 }
 
 function drawCourse() {
   const W = cCourse.width, H = cCourse.height, hd = state.holeData;
+  if(!hd) return;
   ctxC.clearRect(0,0,W,H);
   
   ctxC.fillStyle = '#111a0e'; ctxC.fillRect(0,0,W,H);
   ctxC.fillStyle = '#162312';
   for(let i=0; i<800; i++) ctxC.fillRect(Math.random()*W, Math.random()*H, 3, 2);
 
-  state.fairwayPath = buildFairwayPath(hd, 0);
-  state.roughPath = buildFairwayPath(hd, 16);
+  // Rough area
+  tracePath(ctxC, hd, 16);
+  ctxC.fillStyle = '#1e3218'; 
+  ctxC.fill();
+  
+  // Fairway
+  tracePath(ctxC, hd, 0);
+  ctxC.fillStyle = getFairwayPattern(ctxC) || '#2b4d1f'; 
+  ctxC.fill();
 
-  ctxC.fillStyle = '#1e3218'; ctxC.fill(state.roughPath);
-  const fairwayPattern = ctxC.createPattern(createFairwayPattern(), 'repeat');
-  ctxC.fillStyle = fairwayPattern; ctxC.fill(state.fairwayPath);
-
+  // Connector Tee
   ctxC.strokeStyle = '#2b4d1f'; ctxC.lineWidth = hd.fairwayW * 0.4;
   ctxC.lineCap = 'square'; ctxC.beginPath();
   ctxC.moveTo(hd.teeX, hd.teeY); ctxC.lineTo(hd.teeX, hd.teeY - 30); ctxC.stroke();
@@ -484,9 +503,31 @@ function drawUI() {
   }
 }
 
-// ─── HANDICAP & GAME SYSTEMS ─────────────────────────────────────────────────
+function resetMetersUI() {
+  $('power-fill').style.width = '0%';
+  $('aim-cursor').style.left = '50%';
+}
+
+function updateShootBtnUI() {
+  const btn = $('shoot-btn');
+  if (state.phase === 'card_select') {
+      btn.disabled = !state.selectedClub;
+      btn.textContent = state.selectedClub ? 'MANTÉN (FUERZA)' : 'GOLPEAR';
+  } else if (state.phase === 'power') {
+      btn.disabled = false;
+      btn.textContent = 'SUELTA (FIJAR)';
+  } else if (state.phase === 'aim') {
+      btn.disabled = false;
+      btn.textContent = 'PULSA (DIRECCIÓN)';
+  } else {
+      btn.disabled = true;
+      btn.textContent = '...';
+  }
+}
+
+// ─── WIND & CARDS ────────────────────────────────────────────────────────────
 function generateWind() {
-  const baseSpeed = 4 + state.holeData.difficulty * 12; // Viento sube con la dificultad
+  const baseSpeed = 4 + state.holeData.difficulty * 12;
   state.wind.speed = Math.random() * baseSpeed;
   state.wind.dir = Math.random()*Math.PI*2;
   $('wind-text').textContent = state.wind.speed.toFixed(1)+' m/s';
@@ -496,29 +537,30 @@ function generateWind() {
 }
 
 function dealCards() {
-  // Descartar usadas
   state.hand = state.hand.filter(c => c.uid !== state.selectedClub && c.uid !== state.selectedBall);
-  state.selectedClub = null; state.selectedBall = null;
+  state.selectedClub = null;
+  state.selectedBall = null;
 
-  // Solo reponer si nos quedamos sin palos (o si es el primer robo absoluto)
   const clubsCount = state.hand.filter(c => c.type === 'club').length;
   if (clubsCount === 0 || state.hand.length === 0) {
-    // Rellenamos hasta 5 desde activeDeck
     let safety = 0;
     while(state.hand.length < 5 && safety < 50) {
         safety++;
         const curClubs = state.hand.filter(c => c.type === 'club').length;
-        // Priorizar palo si hay < 2, sino al azar del deck
-        let candidates = state.activeDeck;
-        if(curClubs < 2) candidates = state.activeDeck.filter(c=>c.type==='club');
-        if(candidates.length === 0) candidates = state.activeDeck; // fallback
+        
+        // Uso estricto del mazo activo, con red de seguridad
+        let candidates = state.activeDeck && state.activeDeck.length > 0 ? state.activeDeck : INITIAL_COLLECTION;
+        
+        if(curClubs < 2) {
+           const clubCands = candidates.filter(c=>c.type==='club');
+           if(clubCands.length > 0) candidates = clubCands;
+        }
         
         const card = candidates[Math.floor(Math.random()*candidates.length)];
-        state.hand.push(cloneCard(card));
+        if(card) state.hand.push(cloneCard(card));
     }
   }
 
-  // Lógica del Putter Mágico (No consume carta de tu colección real)
   const hasPutt = state.hand.some(c => c.isPutt);
   if (state.distToHole <= 40 && !hasPutt) {
     const clubIndex = state.hand.findIndex(c => c.type === 'club');
@@ -527,8 +569,10 @@ function dealCards() {
   } else if (state.distToHole > 40 && hasPutt) {
     const pIndex = state.hand.findIndex(c => c.isPutt);
     if(pIndex !== -1) {
-      const clubs = state.activeDeck.filter(c=>c.type==='club');
-      state.hand[pIndex] = cloneCard(clubs[Math.floor(Math.random()*clubs.length)]);
+      let clubs = state.activeDeck && state.activeDeck.length > 0 ? state.activeDeck.filter(c=>c.type==='club') : [];
+      if (clubs.length === 0) clubs = INITIAL_COLLECTION.filter(c=>c.type==='club'); 
+      const newClub = clubs[Math.floor(Math.random()*clubs.length)];
+      if(newClub) state.hand[pIndex] = cloneCard(newClub);
     }
   }
   renderCards();
@@ -555,7 +599,7 @@ function selectCard(card) {
   } else {
     state.selectedBall = state.selectedBall === card.uid ? null : card.uid;
   }
-  renderCards(); $('shoot-btn').disabled = !state.selectedClub; updateReachDisplay(); drawUI();
+  renderCards(); updateShootBtnUI(); updateReachDisplay(); drawUI();
 }
 
 function updateReachDisplay() {
@@ -575,7 +619,7 @@ function showDeckBuilder() {
   $('deck-overlay').style.display = 'flex';
   state.draftingLimits = { expected: 15, current: [] };
   renderDeckGrid(state.collection, 'deck-grid', state.draftingLimits, 'deck-counter', 'deck-btn', () => {
-    state.activeDeck = state.draftingLimits.current;
+    state.activeDeck = [...state.draftingLimits.current]; 
     $('deck-overlay').style.display = 'none';
     startHole(0);
   });
@@ -590,8 +634,8 @@ function generateProceduralCards(count) {
       const dist = 120 + Math.floor(Math.random()*120);
       newCards.push({name:`${adjs[Math.floor(Math.random()*adjs.length)]} ${type}`, dist, icon:type==='Wood'?'🌲':'⛳', type:'club'});
     } else {
-      const effect = BALLS[Math.floor(Math.random()*BALLS.length)];
-      newCards.push({...effect, name:`${adjs[Math.floor(Math.random()*adjs.length)]} ${effect.name}`});
+      const effect = BASE_BALL_EFFECTS[Math.floor(Math.random()*BASE_BALL_EFFECTS.length)];
+      newCards.push({...effect, name:`${adjs[Math.floor(Math.random()*adjs.length)]} Bola`, type:'ball'});
     }
   }
   return newCards;
@@ -607,10 +651,8 @@ function showDraftScreen() {
   renderDeckGrid(newCards, 'deck-grid', state.draftingLimits, 'deck-counter', 'deck-btn', () => {
     state.collection.push(...state.draftingLimits.current);
     $('deck-overlay').style.display = 'none';
-    
-    // Reset full game
     state.hole = 0; state.totalScore = 0; state.scores = []; state.hand = [];
-    showDeckBuilder(); // Back to bag selection
+    showDeckBuilder();
   });
 }
 
@@ -620,7 +662,7 @@ function renderDeckGrid(sourceArray, gridId, limitsObj, counterId, btnId, callba
   $(btnId).disabled = true;
   $(btnId).onclick = callback;
   
-  sourceArray.forEach((card, idx) => {
+  sourceArray.forEach((card) => {
     const div = document.createElement('div');
     div.className = 'card' + (card.type==='ball'?' ball-card':'');
     const isClub = card.type==='club';
@@ -681,27 +723,35 @@ function showScorecard(isMidGame) {
   };
 }
 
-// ─── SHOT MECHANICS ──────────────────────────────────────────────────────────
+// ─── SHOT MECHANICS & EVENTS ─────────────────────────────────────────────────
 let powerRaf=null, aimRaf=null;
 
 function startPowerMeter() {
-  state.phase = 'power'; state.powerVal = 0; state.powerDir = 1; state.powerHeld = false;
+  state.phase = 'power'; state.powerVal = 0; state.powerDir = 1; state.powerHeld = true;
   lastPowerTime = performance.now();
-  $('shoot-btn').textContent = 'Soltar'; $('shoot-btn').disabled = false; $('shoot-btn').onclick = stopPower;
-  document.addEventListener('keydown', onKeyDownPower); document.addEventListener('keyup', onKeyUpPower);
-  $('power-track').addEventListener('touchstart', startHoldPower, {passive:true}); $('power-track').addEventListener('mousedown', startHoldPower);
+  updateShootBtnUI();
   animatePower(performance.now());
 }
 
-function onKeyDownPower(e){ if(e.code==='Space'&&!state.powerHeld){e.preventDefault();startHoldPower();} }
-function onKeyUpPower(e){ if(e.code==='Space'){e.preventDefault();stopPower();} }
-function startHoldPower(){ if(state.powerHeld) return; state.powerHeld=true; }
-function stopPower(){
+function stopPower() {
   if(state.phase!=='power') return;
   state.powerHeld = false;
-  document.removeEventListener('keydown',onKeyDownPower); document.removeEventListener('keyup',onKeyUpPower);
-  $('power-track').removeEventListener('touchstart',startHoldPower); $('power-track').removeEventListener('mousedown',startHoldPower);
-  cancelAnimationFrame(powerRaf); startAimMeter();
+  cancelAnimationFrame(powerRaf); 
+  startAimMeter();
+}
+
+function startAimMeter() {
+  const club = state.hand.find(c=>c.uid===state.selectedClub);
+  if(club && club.isPutt) { state.aimVal = 0.5; executeShot(); return; }
+  state.phase = 'aim'; state.aimVal = 0; state.aimDir = 1; lastAimTime = performance.now();
+  updateShootBtnUI();
+  animateAim(performance.now());
+}
+
+function stopAim() {
+  if(state.phase!=='aim') return;
+  cancelAnimationFrame(aimRaf); 
+  executeShot();
 }
 
 let lastPowerTime=0;
@@ -710,24 +760,6 @@ function animatePower(ts) {
   if(state.powerHeld) state.powerVal = Math.min(1, state.powerVal + dt*1.2);
   $('power-fill').style.width = (state.powerVal*100)+'%';
   if(state.phase==='power') powerRaf=requestAnimationFrame(animatePower);
-}
-
-function startAimMeter() {
-  const club = state.hand.find(c=>c.uid===state.selectedClub);
-  if(club && club.isPutt) { state.aimVal = 0.5; executeShot(); return; }
-  state.phase = 'aim'; state.aimVal = 0; state.aimDir = 1; lastAimTime = performance.now();
-  $('shoot-btn').textContent = 'Apuntar'; $('shoot-btn').onclick = stopAim;
-  document.addEventListener('keydown', onKeyDownAim);
-  $('aim-track').addEventListener('touchstart', stopAim, {passive:true}); $('aim-track').addEventListener('mousedown', stopAim);
-  animateAim(performance.now());
-}
-
-function onKeyDownAim(e){ if(e.code==='Space'){e.preventDefault();stopAim();} }
-function stopAim(){
-  if(state.phase!=='aim') return;
-  document.removeEventListener('keydown',onKeyDownAim);
-  $('aim-track').removeEventListener('touchstart',stopAim); $('aim-track').removeEventListener('mousedown',stopAim);
-  cancelAnimationFrame(aimRaf); executeShot();
 }
 
 let lastAimTime=0;
@@ -739,10 +771,41 @@ function animateAim(ts){
   if(state.phase==='aim') aimRaf=requestAnimationFrame(animateAim);
 }
 
+// EVENTOS GLOBALES DE CONTROL
+const sBtn = $('shoot-btn');
+function onShootBtnPress(e) {
+    if (sBtn.disabled) return;
+    if (state.phase === 'card_select' && state.selectedClub) {
+        e.preventDefault();
+        $('cards-row').style.pointerEvents='none';
+        startPowerMeter();
+    } else if (state.phase === 'aim') {
+        e.preventDefault();
+        stopAim();
+    }
+}
+function onShootBtnRelease(e) {
+    if (state.phase === 'power') {
+        e.preventDefault();
+        stopPower();
+    }
+}
+sBtn.addEventListener('mousedown', onShootBtnPress);
+sBtn.addEventListener('touchstart', onShootBtnPress, {passive: false});
+window.addEventListener('mouseup', onShootBtnRelease);
+window.addEventListener('touchend', onShootBtnRelease, {passive: false});
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !e.repeat && !sBtn.disabled) onShootBtnPress(e);
+});
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') onShootBtnRelease(e);
+});
+
 // ─── EXECUTE SHOT ────────────────────────────────────────────────────────────
 function executeShot() {
   state.phase = 'flight'; state.strokes++;
-  $('h-strokes').textContent = state.strokes; $('shoot-btn').disabled = true;
+  $('h-strokes').textContent = state.strokes; 
+  updateShootBtnUI();
   
   const clubCard = state.hand.find(c=>c.uid===state.selectedClub);
   const ballCard = state.selectedBall ? state.hand.find(b=>b.uid===state.selectedBall) : null;
@@ -756,13 +819,11 @@ function executeShot() {
   let deviation = 0;
   if(!clubCard.isPutt) {
     const aimOff = (state.aimVal - 0.5) * 2;
-    // HANDICAP: Desviación base aumenta en hoyos más altos
     const diffMulti = 1 + (state.holeData.difficulty * 0.5); 
     let devFactor = 0.06 * diffMulti;
     if(ballCard?.effect==='control') devFactor *= 0.4;
     deviation = aimOff * shotDist * devFactor;
     
-    // Si la bola pesa mucho ignora el viento
     if(ballCard?.effect !== 'heavy') {
        const windH = Math.sin(state.wind.dir) * state.wind.speed;
        deviation += windH * (shotDist/200) * 3;
@@ -866,16 +927,18 @@ function endShot(inHoleEarly) {
   const terrain = getTerrain(state.ball.x, state.ball.y);
   updateDistDisplay(); drawBall(); drawUI();
   
+  resetMetersUI(); // Limpiamos la UI
+  
   if(inHoleEarly || state.distToHole <= 2.5) {
     setTimeout(()=>holeComplete(), 400);
   } else {
     state.phase = 'card_select'; state.powerHeld = false;
     state.target = {x: hd.holeX, y: hd.holeY};
-    dealCards(); updateShootBtn();
+    dealCards(); 
+    updateShootBtnUI(); // Reinicia el botón
     
     const terrainLabels = {'green':'Green', 'fairway':'Fairway', 'rough':'Rough', 'sand':'Bunker'};
     $('d-pos').textContent = terrainLabels[terrain] || 'Fairway';
-    $('shoot-btn').textContent = 'Golpear'; $('shoot-btn').onclick = onShootClick;
     
     updateDistDisplay(); $('cards-row').style.pointerEvents = 'auto'; 
   }
@@ -898,13 +961,12 @@ function startHole(holeIdx) {
     generateWind();
     dealCards(); 
     
+    resetMetersUI();
     $('cards-row').style.pointerEvents = 'auto';
     updateHUD(); updateDistDisplay(); drawCourse(); drawBall(); drawUI();
     
     $('d-pos').textContent = 'Tee';
-    $('shoot-btn').textContent = 'Golpear';
-    $('shoot-btn').onclick = onShootClick;
-    updateShootBtn();
+    updateShootBtnUI();
   }, 50);
 }
 
@@ -939,20 +1001,14 @@ function holeComplete() {
   
   $('msg-btn').onclick = ()=>{
     msgOverlay.style.display='none';
-    if(state.hole === 8) { // Acabó el hoyo 9 (índice 8)
+    if(state.hole === 8) { 
        showScorecard(true);
-    } else if (state.hole === 17) { // Acabó el 18
+    } else if (state.hole === 17) { 
        showScorecard(false);
     } else {
        startHole(state.hole + 1);
     }
   };
-}
-
-function onShootClick() {
-  if(!state.selectedClub) return;
-  $('cards-row').style.pointerEvents='none';
-  startPowerMeter();
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
@@ -963,7 +1019,6 @@ window.addEventListener('load', ()=>{
   $('msg-btn').onclick = () => {
     $('msg-overlay').style.display = 'none';
     $('msg-warn').style.display = 'none';
-    // Dar a la colección inicial IDs únicos para siempre
     state.collection = INITIAL_COLLECTION.map(c => cloneCard(c));
     showDeckBuilder();
   }
