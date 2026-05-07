@@ -12,21 +12,20 @@
   <div id="hud">
     <div class="hud-stat"><div class="hud-label">Hoyo</div><div class="hud-value" id="h-hole">1</div></div>
     <div class="hud-stat"><div class="hud-label">Par</div><div class="hud-value" id="h-par">4</div></div>
-    <div id="wind-widget">
-      <div class="hud-label" style="color:var(--text); font-weight:bold;">Viento</div>
-      <div id="wind-flag-wrap">
-        <svg id="wind-flag-svg" viewBox="0 0 40 40" fill="none">
-          <line x1="20" y1="4" x2="20" y2="36" stroke="#3d6b3d" stroke-width="1.5"/>
-          <polygon id="flag-shape" points="20,6 34,12 20,18" fill="#e84832" opacity="0.9"/>
-        </svg>
-      </div>
-      <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-top:4px;">
-         <div class="wind-speed" id="wind-text">0 m/s</div>
-         <div id="wind-arrow" style="color:var(--accent2); font-size:18px; line-height:1; display:inline-block; transform-origin:center; font-weight:900;">➔</div>
-      </div>
-    </div>
     <div class="hud-stat"><div class="hud-label">Golpes</div><div class="hud-value" id="h-strokes">0</div></div>
     <div class="hud-stat"><div class="hud-label">Score</div><div class="hud-value small" id="h-score">E</div></div>
+  </div>
+
+  <div id="wind-widget">
+    <div class="hud-label" style="color:var(--text); font-weight:bold; font-size:8px;">VIENTO</div>
+    <div id="wind-flag-wrap">
+      <svg id="wind-flag-svg" viewBox="0 0 40 40" fill="none">
+        <line x1="20" y1="4" x2="20" y2="36" stroke="#3d6b3d" stroke-width="1.5"/>
+        <polygon id="flag-shape" points="20,6 34,12 20,18" fill="#e84832" opacity="0.9"/>
+      </svg>
+    </div>
+    <div class="wind-speed" id="wind-text">0<br>m/s</div>
+    <div id="wind-arrow" style="color:var(--accent2); font-size:18px; line-height:1; display:inline-block; transform-origin:center; font-weight:900;">➔</div>
   </div>
 
   <div id="canvas-wrap">
@@ -427,7 +426,7 @@
     <div class="msg-sub" id="msg-sub">Golf Procedural · 18 Hoyos</div>
     <div class="warning" id="msg-warn" style="display:none">⚠️ ADVERTENCIA<br>Refrescar el navegador borrará tu progreso y tu colección de cartas para siempre.</div>
     <button class="msg-btn" id="msg-btn">Jugar</button>
-    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">Deck Golf by Javier A. Murillo  -  Ver. 0.4.0  -  2026</div>
+    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">Deck Golf by Nurgtrad. Ver. 0.4.1</div>
   </div>
 
   <div id="deck-overlay" class="overlay">
@@ -474,8 +473,8 @@
     <div class="msg-sub">No te quedan palos en la mano ni cartas en el mazo. Has tenido que abandonar el torneo.</div>
     <button class="msg-btn" onclick="location.reload()">Volver al Inicio</button>
   </div>
-
 </div>
+
 <script src="script.js"></script>
 </body>
 </html>

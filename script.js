@@ -465,7 +465,6 @@ function drawUI() {
 
     // ─── MARCAS DE APUNTADO VISUAL (CROSSHAIRS) ───
     if (overReach) {
-        // Marca ROJA en el target (donde hizo clic el usuario, fuera de alcance)
         ctxU.fillStyle = 'rgba(232,72,50,0.8)';
         ctxU.beginPath(); ctxU.arc(state.target.x, state.target.y, 2.5, 0, Math.PI*2); ctxU.fill();
         ctxU.strokeStyle = 'rgba(232,72,50,0.6)'; ctxU.lineWidth = 1.5;
@@ -474,7 +473,6 @@ function drawUI() {
         ctxU.moveTo(state.target.x + 7, state.target.y - 7); ctxU.lineTo(state.target.x - 7, state.target.y + 7);
         ctxU.stroke();
 
-        // Marca BLANCA en el límite máximo real a lo largo de esa línea
         const reachX = state.ball.x + Math.cos(ang) * maxReachPx;
         const reachY = state.ball.y + Math.sin(ang) * maxReachPx;
 
@@ -486,7 +484,6 @@ function drawUI() {
         ctxU.moveTo(reachX + 7, reachY - 7); ctxU.lineTo(reachX - 7, reachY + 7);
         ctxU.stroke();
     } else {
-        // Marca BLANCA en el target (es un tiro posible dentro del alcance)
         ctxU.fillStyle = 'rgba(255,255,255,0.8)';
         ctxU.beginPath(); ctxU.arc(state.target.x, state.target.y, 2.5, 0, Math.PI*2); ctxU.fill();
         ctxU.strokeStyle = 'rgba(255,255,255,0.6)'; ctxU.lineWidth = 1.5;
@@ -529,15 +526,12 @@ function drawUI() {
     ctxU.stroke(); ctxU.setLineDash([]);
   }
 
-  // Llama a la actualización del medidor de fuerza predictivo
   updatePowerMark();
 }
 
-// ─── MARCADOR DE FUERZA RECOMENDADO ──────────────────────────────────────────
 function updatePowerMark() {
   let mark = $('power-mark');
   
-  // Si no existe, creamos el elemento dinámicamente en el HTML
   if (!mark) {
       mark = document.createElement('div');
       mark.id = 'power-mark';
@@ -569,13 +563,10 @@ function updatePowerMark() {
   const dy = state.target.y - state.ball.y;
   const targetPx = Math.hypot(dx, dy);
 
-  // Si el click está dentro de nuestro rango, mostramos la predicción de fuerza
-  // Dejamos un margen de 2px para no mostrarla si apunta exactamente al 100%
   if (targetPx < maxReachPx - 2 && targetPx > 0) {
       const targetDistM = targetPx / state.holeData.scale;
       const powerFactor = targetDistM / clubDist;
       
-      // La fórmula inversa a (powerVal^1.6)
       let requiredPowerVal = Math.pow(powerFactor, 1/1.6);
       requiredPowerVal = Math.max(0, Math.min(1, requiredPowerVal));
 
@@ -600,7 +591,7 @@ function updateShootBtnUI() {
 function generateWind() {
   state.wind.speed = Math.random() * (4 + state.holeData.difficulty * 12);
   state.wind.dir = Math.random()*Math.PI*2;
-  $('wind-text').textContent = state.wind.speed.toFixed(1)+' m/s';
+  $('wind-text').innerHTML = state.wind.speed.toFixed(1)+'<br>m/s';
   $('wind-arrow').style.transform = `rotate(${state.wind.dir}rad)`;
   const flagEl = $('flag-shape'), animAmt = Math.min(state.wind.speed/15, 1);
   flagEl.setAttribute('points', `20,6 ${34+Math.cos(state.wind.dir)*animAmt*8},${12+animAmt*2} 20,18`);
@@ -621,14 +612,15 @@ function drawCardsToHand() {
       const clubIndex = state.hand.findIndex(c => c.type === 'club');
       if(clubIndex !== -1) { state.hand[clubIndex] = cloneCard(PUTTER_CARD); }
       else state.hand.push(cloneCard(PUTTER_CARD));
-  } else if (state.distToHole > 40 && hasPutt) state.hand = state.hand.filter(c => !c.isPutt);
+  } else if (state.distToHole > 40 && hasPutt) {
+      state.hand = state.hand.filter(c => !c.isPutt);
+  }
 
   while(state.hand.length < 5) {
-      if (state.drawPile.length === 0) break; // Las cartas se agotan
+      if (state.drawPile.length === 0) break;
       state.hand.push(state.drawPile.pop());
   }
 
-  // Comprobar Soft-lock (mano vacía de palos)
   let validClubs = state.hand.filter(c => c.type === 'club');
   let clubsInDeck = state.drawPile.filter(c => c.type === 'club').length;
 
@@ -641,7 +633,6 @@ function drawCardsToHand() {
       return;
   }
 
-  // Game over si no hay cartas y no hay palos
   if (state.hand.length === 0 && state.drawPile.length === 0) {
       $('gameover-overlay').style.display = 'flex';
       return;
@@ -651,7 +642,7 @@ function drawCardsToHand() {
 }
 
 function discardPlayedCards() {
-  // Las cartas jugadas DESAPARECEN. (Excepto el Putter, que se regenera dinámicamente).
+  // Las cartas se gastan y desaparecen, excepto el putter que se genera dinamicamente
   state.hand = state.hand.filter(c => c.uid !== state.selectedClub && c.uid !== state.selectedBall);
   state.selectedClub = null; state.selectedBall = null;
 }
@@ -899,7 +890,6 @@ function executeShot() {
     
     if(ballCard?.effect !== 'heavy') {
        const wX = Math.cos(state.wind.dir) * state.wind.speed, wY = Math.sin(state.wind.dir) * state.wind.speed;
-       // ─── LOS NUEVOS MULTIPLICADORES DE VIENTO ───
        deviation += (wX * perpX + wY * perpY) * (shotDist/100) * 2.5; 
        shotDist += (wX * dirX + wY * dirY) * (shotDist/100) * 2.0; 
        shotDist = Math.max(5, shotDist);
@@ -1127,9 +1117,8 @@ function holeComplete(maxLimit = false) {
     e.preventDefault();
     $('msg-overlay').style.display = 'none'; 
     
-    state.hand = []; 
-    state.selectedClub = null;
-    state.selectedBall = null;
+    // Eliminamos la carta usada para terminar el hoyo
+    discardPlayedCards();
     
     let queue = [];
     if (diff <= -1) {
