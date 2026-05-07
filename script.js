@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
+// ─── DATA & NUEVAS CARTAS ────────────────────────────────────────────────────
 const CARDS_POOL = [
   {id:'d', name:'Driver', dist:240, icon:'🏌', type:'club'},
   {id:'3w', name:'3 Wood', dist:215, icon:'🌲', type:'club'},
@@ -17,30 +17,33 @@ const CARDS_POOL = [
   {name:'Sand W', dist:80,  icon:'⏳', type:'club'},
   {name:'Lob W', dist:60,  icon:'📐', type:'club'},
   
-  {id:'scope', name:'Scope', icon:'🔭', effect:'guide', desc:'Visualiza trayectoria de tiro', type:'ball'},
-  {name:'Control', icon:'🎱', effect:'control', desc:'-60% desvío', type:'ball'},
-  {name:'Power', icon:'💥', effect:'power', desc:'+20% dist.', type:'ball'},
+  {name:'Power', icon:'🔥', effect:'power', desc:'+25% distancia', type:'ball'},
   {name:'Backspin', icon:'↩', effect:'Backspin', desc:'Retroceso', type:'ball'},
-  {name:'Fallstop', icon:'📍', effect:'fallstop', desc:'0 rodadura', type:'ball'},
   {name:'Heavy', icon:'🪨', effect:'heavy', desc:'Ignora viento', type:'ball'},
+  {name:'Mulligan', icon:'⏪', effect:'mulligan', desc:'Rebobina tiro (OB/Agua)', type:'ball'},
+  {name:'Rana', icon:'🐸', effect:'frog', desc:'Rebota sobre agua', type:'ball'},
+  {name:'Oruga', icon:'🚜', effect:'tractor', desc:'Ignora penalización terreno', type:'ball'}
 ];
 CARDS_POOL.forEach((c,i) => c.baseId = c.id || `c${i}`);
 
 const PUTTER_CARD = {baseId:'putt', name:'Putt', dist:30, icon:'🕳', type:'club', isPutt:true};
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,4,4,5,4,3,5,4];
-const MAX_DECK_CARDS = 20;
+
+// LÍMITES ESTRICTOS DE LA BARAJA
+const MAX_CLUBS = 20;
+const MAX_BALLS = 4;
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let state = {
   deckConfig: {}, drawPile: [], hand: [],
-  hole: 0, totalScore: 0, scores: [], holeData: null,
-  ball: {x:0, y:0}, target: {x:0, y:0}, prevPos: {x:0, y:0}, currentTerrain: 'tee',
+  money: 0, hole: 0, totalScore: 0, scores: [], holeData: null,
+  ball: {x:0, y:0}, target: {x:0, y:0}, prevPos: {x:0, y:0}, currentTerrain: 'tee', shotTerrain: 'tee',
   strokes: 0, phase: 'card_select', selectedClub: null, selectedBall: null, itemLocked: false,
   wind: {speed:0, dir:0}, powerVal: 0, powerDir: 1, powerHeld: false, aimVal: 0.5, aimDir: 1,
   ballAnim: null, cachedPattern: null, paths: {}
 };
 
-// ─── UTILS ───────────────────────────────────────────────────────────────────
+// ─── UTILS & VFX ENGINE ──────────────────────────────────────────────────────
 function cloneCard(c) { return {...c, uid: Math.random().toString(36).substr(2, 9)}; }
 function shuffle(array) {
   for(let i=array.length-1; i>0; i--){
@@ -58,14 +61,73 @@ function showToast(text) {
   setTimeout(()=>t.remove(), 2000);
 }
 
+// MOTOR DE PARTÍCULAS
+let vfxList = [];
+function addRipple(x, y) { vfxList.push({type: 'ripple', x, y, age: 0, maxAge: 600}); }
+function addDust(x, y) {
+    for(let i=0; i<6; i++) {
+        vfxList.push({
+            type: 'dust', x, y, 
+            vx: (Math.random()-0.5)*1.5, vy: (Math.random()-0.5)*1.5 - 0.5, 
+            age: 0, maxAge: 300 + Math.random()*200
+        });
+    }
+}
+function addFire(x, y) {
+    for(let i=0; i<3; i++) {
+        vfxList.push({
+            type: 'fire', x: x + (Math.random()-0.5)*6, y: y + (Math.random()-0.5)*6,
+            vx: (Math.random()-0.5)*0.5, vy: -Math.random()*1.5 - 0.5,
+            age: 0, maxAge: 200 + Math.random()*150,
+            size: 3 + Math.random()*3
+        });
+    }
+}
+function addRockTrail(x, y) {
+    if(Math.random() < 0.3) {
+        vfxList.push({
+            type: 'rock', x: x + (Math.random()-0.5)*8, y: y + (Math.random()-0.5)*8,
+            vx: 0, vy: Math.random()*0.5 + 0.2, 
+            age: 0, maxAge: 400 + Math.random()*200,
+            size: 2 + Math.random()*3
+        });
+    }
+}
+
+function drawVFX(ctx) {
+    for(let i = vfxList.length - 1; i >= 0; i--) {
+        let p = vfxList[i];
+        p.age += 16; 
+        if (p.age > p.maxAge) { vfxList.splice(i, 1); continue; }
+        let t = p.age / p.maxAge;
+        
+        if (p.type === 'ripple') {
+            ctx.strokeStyle = `rgba(255,255,255,${1-t})`; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 4 + t*12, 0, Math.PI*2); ctx.stroke();
+        } else if (p.type === 'dust') {
+            p.x += p.vx; p.y += p.vy;
+            ctx.fillStyle = `rgba(200,180,150,${1-t})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 2.5*(1-t), 0, Math.PI*2); ctx.fill();
+        } else if (p.type === 'fire') {
+            p.x += p.vx; p.y += p.vy;
+            let g = Math.floor(150 * (1 - t)); 
+            ctx.fillStyle = `rgba(255, ${g}, 0, ${1-t})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size*(1-t), 0, Math.PI*2); ctx.fill();
+        } else if (p.type === 'rock') {
+            p.x += p.vx; p.y += p.vy;
+            ctx.fillStyle = `rgba(100, 100, 100, ${1-t})`;
+            ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size*(1-t), p.size*(1-t));
+        }
+    }
+}
+
 function autoSelectBestClub() {
   let bestClub = null;
   let minDiff = Infinity;
   state.hand.forEach(c => {
     if(c.type === 'club') {
-      if(state.currentTerrain === 'green') {
-        if(c.isPutt) bestClub = c;
-      } else if (!c.isPutt) {
+      if(state.currentTerrain === 'green') { if(c.isPutt) bestClub = c; } 
+      else if (!c.isPutt) {
          let diff = Math.abs(c.dist - state.distToHole);
          if (diff < minDiff) { minDiff = diff; bestClub = c; }
       }
@@ -264,7 +326,7 @@ function createTerrainPaths(hd) {
             const dxEnd = bezierTangent(hd.teeX, hd.cp1x, hd.cp2x, hd.holeX, tEnd);
             const dyEnd = bezierTangent(hd.teeY, hd.cp1y, hd.cp2y, hd.holeY, tEnd);
             const angEnd = Math.atan2(dyEnd, dxEnd);
-            const wEnd = Math.hypot(poly.l[poly.l.length-1].x - bxEnd, poly.l[poly.l.length-1].y - byEnd);
+            const wEnd = Math.max(0.1, Math.hypot(poly.l[poly.l.length-1].x - bxEnd, poly.l[poly.l.length-1].y - byEnd));
             paths[type].arc(bxEnd, byEnd, wEnd, angEnd + Math.PI/2, angEnd - Math.PI/2, true);
 
             for(let i=poly.l.length-1; i>=0; i--) paths[type].lineTo(poly.l[i].x, poly.l[i].y);
@@ -274,7 +336,7 @@ function createTerrainPaths(hd) {
             const dxStart = bezierTangent(hd.teeX, hd.cp1x, hd.cp2x, hd.holeX, tStart);
             const dyStart = bezierTangent(hd.teeY, hd.cp1y, hd.cp2y, hd.holeY, tStart);
             const angStart = Math.atan2(dyStart, dxStart);
-            const wStart = Math.hypot(poly.l[0].x - bxStart, poly.l[0].y - byStart);
+            const wStart = Math.max(0.1, Math.hypot(poly.l[0].x - bxStart, poly.l[0].y - byStart));
             paths[type].arc(bxStart, byStart, wStart, angStart - Math.PI/2, angStart + Math.PI/2, true);
             paths[type].closePath();
         });
@@ -379,7 +441,7 @@ function drawCourse() {
 
   hd.lakes.forEach(l => {
     ctxC.save(); ctxC.translate(l.cx, l.cy); ctxC.rotate(l.angle);
-    ctxC.fillStyle = '#1c3d5a'; ctxC.beginPath(); ctxC.ellipse(0, 0, l.rx, l.ry, 0, 0, Math.PI*2); ctxC.fill();
+    ctxC.fillStyle = '#1c3d5a'; ctxC.beginPath(); ctxC.ellipse(0, 0, Math.max(0.1, l.rx), Math.max(0.1, l.ry), 0, 0, Math.PI*2); ctxC.fill();
     ctxC.strokeStyle = '#2b5f8c'; ctxC.lineWidth = 1; 
     ctxC.beginPath(); ctxC.moveTo(-l.rx*0.5, 0); ctxC.lineTo(l.rx*0.5, 0); ctxC.stroke();
     ctxC.beginPath(); ctxC.moveTo(-l.rx*0.3, l.ry*0.4); ctxC.lineTo(l.rx*0.3, l.ry*0.4); ctxC.stroke();
@@ -388,8 +450,8 @@ function drawCourse() {
 
   hd.sandTraps.forEach(s => {
     ctxC.save(); ctxC.translate(s.cx, s.cy); ctxC.rotate(s.angle);
-    ctxC.fillStyle = '#5c4d24'; ctxC.beginPath(); ctxC.ellipse(0, 0, s.rx+4, s.ry+4, 0, 0, Math.PI*2); ctxC.fill();
-    ctxC.fillStyle = '#c2a86b'; ctxC.beginPath(); ctxC.ellipse(0, 0, s.rx, s.ry, 0, 0, Math.PI*2); ctxC.fill();
+    ctxC.fillStyle = '#5c4d24'; ctxC.beginPath(); ctxC.ellipse(0, 0, Math.max(0.1, s.rx+4), Math.max(0.1, s.ry+4), 0, 0, Math.PI*2); ctxC.fill();
+    ctxC.fillStyle = '#c2a86b'; ctxC.beginPath(); ctxC.ellipse(0, 0, Math.max(0.1, s.rx), Math.max(0.1, s.ry), 0, 0, Math.PI*2); ctxC.fill();
     ctxC.fillStyle = '#a68f56';
     for(let i=0;i<20;i++){
       const angle=Math.random()*Math.PI*2, r=Math.random(); ctxC.fillRect(Math.cos(angle)*s.rx*r, Math.sin(angle)*s.ry*r, 3,1.5);
@@ -398,8 +460,8 @@ function drawCourse() {
   });
   
   const gx=hd.holeX, gy=hd.holeY, gr=hd.greenR;
-  ctxC.fillStyle = '#224a1e'; ctxC.beginPath(); ctxC.arc(gx, gy, gr + 6, 0, Math.PI*2); ctxC.fill();
-  ctxC.fillStyle = '#32702c'; ctxC.beginPath(); ctxC.arc(gx, gy, gr, 0, Math.PI*2); ctxC.fill();
+  ctxC.fillStyle = '#224a1e'; ctxC.beginPath(); ctxC.arc(gx, gy, Math.max(0.1, gr + 6), 0, Math.PI*2); ctxC.fill();
+  ctxC.fillStyle = '#32702c'; ctxC.beginPath(); ctxC.arc(gx, gy, Math.max(0.1, gr), 0, Math.PI*2); ctxC.fill();
   
   ctxC.fillStyle = '#000'; ctxC.beginPath();ctxC.arc(gx,gy,7,0,Math.PI*2);ctxC.fill();
   ctxC.strokeStyle = '#e0e0e0'; ctxC.lineWidth = 1.5; ctxC.beginPath();ctxC.moveTo(gx,gy);ctxC.lineTo(gx,gy-32);ctxC.stroke();
@@ -411,9 +473,9 @@ function drawCourse() {
   
   hd.trees.forEach(t => {
      ctxC.fillStyle = '#3a2a18'; ctxC.fillRect(t.x-2, t.y, 4, 12);
-     ctxC.fillStyle = 'rgba(0,0,0,0.3)'; ctxC.beginPath(); ctxC.ellipse(t.x, t.y+10, t.r*0.8, t.r*0.4, 0, 0, Math.PI*2); ctxC.fill();
-     ctxC.fillStyle = '#1e3d22'; ctxC.beginPath(); ctxC.arc(t.x, t.y, t.r, 0, Math.PI*2); ctxC.fill();
-     ctxC.fillStyle = '#27522c'; ctxC.beginPath(); ctxC.arc(t.x-t.r*0.2, t.y-t.r*0.2, t.r*0.7, 0, Math.PI*2); ctxC.fill();
+     ctxC.fillStyle = 'rgba(0,0,0,0.3)'; ctxC.beginPath(); ctxC.ellipse(t.x, t.y+10, Math.max(0.1, t.r*0.8), Math.max(0.1, t.r*0.4), 0, 0, Math.PI*2); ctxC.fill();
+     ctxC.fillStyle = '#1e3d22'; ctxC.beginPath(); ctxC.arc(t.x, t.y, Math.max(0.1, t.r), 0, Math.PI*2); ctxC.fill();
+     ctxC.fillStyle = '#27522c'; ctxC.beginPath(); ctxC.arc(t.x-t.r*0.2, t.y-t.r*0.2, Math.max(0.1, t.r*0.7), 0, Math.PI*2); ctxC.fill();
   });
 }
 
@@ -422,10 +484,14 @@ function drawBall() {
   ctxB.clearRect(0,0,W,H);
   const b = state.ball; const r = b.airR || 5;
   ctxB.fillStyle = 'rgba(0,0,0,0.4)'; ctxB.beginPath(); ctxB.ellipse(b.x, b.y+(r*0.5), r*0.8, r*0.25, 0, 0, Math.PI*2); ctxB.fill();
-  ctxB.fillStyle = '#fff'; ctxB.beginPath(); ctxB.arc(b.x, b.y, r, 0, Math.PI*2); ctxB.fill();
+  ctxB.fillStyle = '#fff'; ctxB.beginPath(); ctxB.arc(b.x, b.y, Math.max(0.1, r), 0, Math.PI*2); ctxB.fill();
 }
 
-function getLiePenalty(clubDist, terrain) {
+function getLiePenalty(club, ball, terrain) {
+  if (ball && ball.effect === 'tractor') return { pDist: 0, pDevMulti: 1 };
+  if (club && club.name === 'Sand W' && terrain === 'bunker') return { pDist: 0, pDevMulti: 1 };
+
+  let clubDist = club ? club.dist : 150;
   let lFactor = Math.max(0, Math.min(1, (clubDist - 80) / 160));
   let pDist = 0, pDevMulti = 1;
   if (terrain === 'rough') { pDist = 0.08 + (0.17 * lFactor); pDevMulti = 1.2 + (0.8 * lFactor); }
@@ -445,7 +511,6 @@ function drawUI() {
     const targetPx = Math.hypot(dx, dy);
 
     const activeBall = state.hand.find(c => c.uid === state.selectedBall);
-    const hasScope = activeBall && activeBall.effect === 'guide';
     let isWarning = (state.currentTerrain === 'rough' || state.currentTerrain === 'semirough' || state.currentTerrain === 'deeprough' || state.currentTerrain === 'bunker');
 
     let maxReachPx = Infinity;
@@ -454,16 +519,15 @@ function drawUI() {
     if (state.selectedClub) {
         const club = state.hand.find(c => c.uid === state.selectedClub);
         let clubDist = club.dist;
-        if(activeBall && activeBall.effect === 'power') clubDist = Math.round(clubDist*1.2);
+        if(activeBall && activeBall.effect === 'power') clubDist = Math.round(clubDist*1.25);
         
-        let { pDist } = getLiePenalty(club.dist, state.currentTerrain);
+        let { pDist } = getLiePenalty(club, activeBall, state.currentTerrain);
         clubDist = Math.round(clubDist * (1 - pDist));
 
         maxReachPx = clubDist * state.holeData.scale;
         overReach = targetPx > maxReachPx;
     }
 
-    // ─── MARCAS DE APUNTADO VISUAL (CROSSHAIRS) ───
     if (overReach) {
         ctxU.fillStyle = 'rgba(232,72,50,0.8)';
         ctxU.beginPath(); ctxU.arc(state.target.x, state.target.y, 2.5, 0, Math.PI*2); ctxU.fill();
@@ -495,35 +559,37 @@ function drawUI() {
 
     ctxU.beginPath(); ctxU.moveTo(state.ball.x, state.ball.y);
     
-    if (hasScope) {
-      ctxU.setLineDash([4, 4]); ctxU.lineWidth = 2; ctxU.strokeStyle = isWarning ? 'rgba(232,72,50,0.6)' : 'rgba(255,255,255,0.4)';
-      ctxU.lineTo(state.ball.x + Math.cos(ang)*W*2, state.ball.y + Math.sin(ang)*H*2);
-      ctxU.stroke(); ctxU.setLineDash([]);
-      
-      if (state.selectedClub) {
-        const reachX = state.ball.x + Math.cos(ang)*maxReachPx;
-        const reachY = state.ball.y + Math.sin(ang)*maxReachPx;
-        ctxU.fillStyle = isWarning ? 'rgba(232,72,50,0.8)' : 'rgba(168,216,120,0.8)';
-        ctxU.beginPath(); ctxU.arc(reachX, reachY, 5, 0, Math.PI*2); ctxU.fill();
-      }
-    } else {
-      ctxU.lineWidth = 3; ctxU.strokeStyle = 'rgba(0,0,0,0.6)'; // Sombra
-      ctxU.lineTo(state.ball.x + Math.cos(ang)*40, state.ball.y + Math.sin(ang)*40); 
-      ctxU.stroke();
-      
-      ctxU.beginPath(); ctxU.moveTo(state.ball.x, state.ball.y);
-      ctxU.lineWidth = 1.5; ctxU.strokeStyle = isWarning ? 'rgba(232,72,50,0.9)' : 'rgba(255,255,255,0.9)'; // Trazo real
-      ctxU.lineTo(state.ball.x + Math.cos(ang)*40, state.ball.y + Math.sin(ang)*40); 
-      ctxU.stroke();
-    }
+    ctxU.lineWidth = 3; ctxU.strokeStyle = 'rgba(0,0,0,0.6)'; 
+    ctxU.lineTo(state.ball.x + Math.cos(ang)*40, state.ball.y + Math.sin(ang)*40); 
+    ctxU.stroke();
+    
+    ctxU.beginPath(); ctxU.moveTo(state.ball.x, state.ball.y);
+    ctxU.lineWidth = 1.5; ctxU.strokeStyle = isWarning ? 'rgba(232,72,50,0.9)' : 'rgba(255,255,255,0.9)'; 
+    ctxU.lineTo(state.ball.x + Math.cos(ang)*40, state.ball.y + Math.sin(ang)*40); 
+    ctxU.stroke();
   }
   
   if(state.phase === 'flight' && state.ballAnim && state.ballAnim.trace.length > 1) {
+    const activeBall = state.selectedBall ? state.hand.find(c => c.uid === state.selectedBall) : null;
+    const isPower = activeBall && activeBall.effect === 'power';
     const tr = state.ballAnim.trace;
-    ctxU.strokeStyle = 'rgba(255,255,255,0.4)'; ctxU.lineWidth = 1.5; ctxU.setLineDash([3,5]);
-    ctxU.beginPath(); ctxU.moveTo(tr[0].x, tr[0].y);
-    for(let i=1;i<tr.length;i++) ctxU.lineTo(tr[i].x, tr[i].y);
-    ctxU.stroke(); ctxU.setLineDash([]);
+
+    if (isPower) {
+        for(let i=1; i<tr.length; i++) {
+            const alpha = i / tr.length; 
+            ctxU.strokeStyle = `rgba(255, ${Math.floor(150 * alpha)}, 0, ${alpha})`;
+            ctxU.lineWidth = 1 + (alpha * 3);
+            ctxU.beginPath();
+            ctxU.moveTo(tr[i-1].x, tr[i-1].y);
+            ctxU.lineTo(tr[i].x, tr[i].y);
+            ctxU.stroke();
+        }
+    } else {
+        ctxU.strokeStyle = 'rgba(255,255,255,0.4)'; ctxU.lineWidth = 1.5; ctxU.setLineDash([3,5]);
+        ctxU.beginPath(); ctxU.moveTo(tr[0].x, tr[0].y);
+        for(let i=1;i<tr.length;i++) ctxU.lineTo(tr[i].x, tr[i].y);
+        ctxU.stroke(); ctxU.setLineDash([]);
+    }
   }
 
   updatePowerMark();
@@ -545,17 +611,16 @@ function updatePowerMark() {
   }
 
   const club = state.hand.find(c => c.uid === state.selectedClub);
+  const activeBall = state.hand.find(c => c.uid === state.selectedBall);
   if (!club || club.isPutt) {
       mark.style.display = 'none';
       return;
   }
 
   let clubDist = club.dist;
-  if(state.selectedBall) {
-      const bc = state.hand.find(b=>b.uid===state.selectedBall);
-      if(bc && bc.effect === 'power') clubDist = Math.round(clubDist * 1.2);
-  }
-  let { pDist } = getLiePenalty(club.dist, state.currentTerrain);
+  if(activeBall && activeBall.effect === 'power') clubDist = Math.round(clubDist * 1.25);
+
+  let { pDist } = getLiePenalty(club, activeBall, state.currentTerrain);
   clubDist = Math.round(clubDist * (1 - pDist));
 
   const maxReachPx = clubDist * state.holeData.scale;
@@ -566,7 +631,6 @@ function updatePowerMark() {
   if (targetPx < maxReachPx - 2 && targetPx > 0) {
       const targetDistM = targetPx / state.holeData.scale;
       const powerFactor = targetDistM / clubDist;
-      
       let requiredPowerVal = Math.pow(powerFactor, 1/1.6);
       requiredPowerVal = Math.max(0, Math.min(1, requiredPowerVal));
 
@@ -598,22 +662,47 @@ function generateWind() {
 }
 
 function initDeck() {
-  state.drawPile = []; state.hand = [];
+  state.drawPile = []; state.hand = []; state.money = 0;
   for(const [baseId, count] of Object.entries(state.deckConfig)) {
       const template = CARDS_POOL.find(c => c.baseId === baseId);
       for(let i=0; i<count; i++) state.drawPile.push(cloneCard(template));
   }
   shuffle(state.drawPile);
+  $('h-money').textContent = state.money;
 }
 
 function drawCardsToHand() {
-  const hasPutt = state.hand.some(c => c.isPutt);
-  if (state.distToHole <= 40 && !hasPutt) {
-      const clubIndex = state.hand.findIndex(c => c.type === 'club');
-      if(clubIndex !== -1) { state.hand[clubIndex] = cloneCard(PUTTER_CARD); }
-      else state.hand.push(cloneCard(PUTTER_CARD));
-  } else if (state.distToHole > 40 && hasPutt) {
-      state.hand = state.hand.filter(c => !c.isPutt);
+  if (!state.holeData) return;
+  
+  let greenMeters = state.holeData.greenR / state.holeData.scale;
+  let isLargeGreen = greenMeters > 30;
+  let putterDist = isLargeGreen ? 60 : 30;
+  let putterThreshold = isLargeGreen ? 70 : 40;
+
+  let shouldHavePutt = false;
+  if (state.currentTerrain === 'green') {
+      shouldHavePutt = true;
+  } else if (['fairway', 'semirough', 'tee'].includes(state.currentTerrain) && state.distToHole <= putterThreshold) {
+      shouldHavePutt = true;
+  }
+
+  const existingPuttIndex = state.hand.findIndex(c => c.isPutt);
+
+  if (shouldHavePutt) {
+      let pCard = {baseId:'putt', name:'Putt', dist: putterDist, icon:'🕳', type:'club', isPutt:true};
+      if (existingPuttIndex !== -1) {
+          if (state.hand[existingPuttIndex].dist !== putterDist) {
+              state.hand[existingPuttIndex] = cloneCard(pCard);
+          }
+      } else {
+          const clubIndex = state.hand.findIndex(c => c.type === 'club');
+          if(clubIndex !== -1) { state.hand[clubIndex] = cloneCard(pCard); }
+          else state.hand.push(cloneCard(pCard));
+      }
+  } else {
+      if (existingPuttIndex !== -1) {
+          state.hand.splice(existingPuttIndex, 1);
+      }
   }
 
   while(state.hand.length < 5) {
@@ -642,7 +731,6 @@ function drawCardsToHand() {
 }
 
 function discardPlayedCards() {
-  // Las cartas se gastan y desaparecen, excepto el putter que se genera dinamicamente
   state.hand = state.hand.filter(c => c.uid !== state.selectedClub && c.uid !== state.selectedBall);
   state.selectedClub = null; state.selectedBall = null;
 }
@@ -663,9 +751,22 @@ function renderCards() {
     if(isSel) div.classList.add('selected');
     if(disabled) { div.style.opacity = '0.3'; div.style.pointerEvents = 'none'; }
 
-    div.innerHTML = `<span class="card-type">${card.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${card.icon}</div><div class="card-name">${card.name}</div>${card.type==='club' ? `<div class="card-dist">~${card.dist}m</div>` : `<div class="card-dist gold">${card.icon}</div>`}`;
+    let descHtml = card.desc ? `<div class="card-tooltip">${card.desc}</div>` : '';
+    div.innerHTML = `
+        <span class="card-type">${card.type==='club'?'Palo':'Bola'}</span>
+        <div class="card-icon">${card.icon}</div>
+        <div class="card-name">${card.name}</div>
+        ${card.type==='club' ? `<div class="card-dist">~${card.dist}m</div>` : `<div class="card-dist gold">${card.icon}</div>`}
+        ${descHtml}
+    `;
     
     div.onclick = () => {
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
+      if(card.desc) {
+          div.classList.add('show-tooltip');
+          setTimeout(() => div.classList.remove('show-tooltip'), 2500);
+      }
+
       if(state.phase!=='card_select' || disabled) return;
       if(card.type==='club') {
          state.selectedClub = state.selectedClub === card.uid ? null : card.uid;
@@ -700,29 +801,59 @@ $('cc-btn-accept').onclick = () => {
 
 // ─── DECK BUILDER UI ─────────────────────────────────────────────────────────
 function showDeckBuilder() {
-  $('deck-overlay').style.display = 'flex'; state.deckConfig = {}; let totalCards = 0;
+  $('deck-overlay').style.display = 'flex'; state.deckConfig = {}; 
+  let totalClubs = 0; let totalBalls = 0;
+  
   const grid = $('deck-grid'); grid.innerHTML = ''; const btn = $('deck-btn'); btn.disabled = true;
+  
   CARDS_POOL.forEach((card) => {
     state.deckConfig[card.baseId] = 0;
     const div = document.createElement('div'); div.className = 'card' + (card.type==='ball'?' ball-card':'');
-    div.innerHTML = `<div class="card-badge" style="display:none"></div><div class="card-icon">${card.icon}</div><div class="card-name">${card.name}</div>${card.type==='club' ? `<div class="card-dist">~${card.dist}m</div>` : `<div class="card-dist gold">${card.icon}</div>`}`;
+    
+    let descHtml = card.desc ? `<div class="card-tooltip">${card.desc}</div>` : '';
+    div.innerHTML = `
+        <div class="card-badge" style="display:none"></div>
+        <div class="card-icon">${card.icon}</div>
+        <div class="card-name">${card.name}</div>
+        ${card.type==='club' ? `<div class="card-dist">~${card.dist}m</div>` : `<div class="card-dist gold">${card.icon}</div>`}
+        ${descHtml}
+    `;
     const badge = div.querySelector('.card-badge');
     
     div.onclick = () => {
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('show-tooltip'));
+      if(card.desc) {
+          div.classList.add('show-tooltip');
+          setTimeout(() => div.classList.remove('show-tooltip'), 2500);
+      }
+
       let count = state.deckConfig[card.baseId];
+      let isClub = card.type === 'club';
+      let limit = isClub ? MAX_CLUBS : MAX_BALLS;
+      let currentTotal = isClub ? totalClubs : totalBalls;
+
       if (count === 2) {
-          state.deckConfig[card.baseId] = 0; totalCards -= 2;
+          state.deckConfig[card.baseId] = 0;
+          if(isClub) totalClubs -= 2; else totalBalls -= 2;
       } else if (count === 1) {
-          if (totalCards < MAX_DECK_CARDS) { state.deckConfig[card.baseId] = 2; totalCards++; }
-          else { state.deckConfig[card.baseId] = 0; totalCards--; }
-      } else if (count === 0 && totalCards < MAX_DECK_CARDS) {
-          state.deckConfig[card.baseId] = 1; totalCards++;
+          if (currentTotal < limit) {
+              state.deckConfig[card.baseId] = 2;
+              if(isClub) totalClubs++; else totalBalls++;
+          } else {
+              state.deckConfig[card.baseId] = 0;
+              if(isClub) totalClubs--; else totalBalls--;
+          }
+      } else if (count === 0 && currentTotal < limit) {
+          state.deckConfig[card.baseId] = 1;
+          if(isClub) totalClubs++; else totalBalls++;
       }
       
       count = state.deckConfig[card.baseId];
       if(count > 0) { div.classList.add('selected'); badge.style.display = 'flex'; badge.textContent = `x${count}`; }
       else { div.classList.remove('selected'); badge.style.display = 'none'; }
-      $('deck-counter').textContent = `${totalCards} / ${MAX_DECK_CARDS}`; btn.disabled = totalCards !== MAX_DECK_CARDS;
+      
+      $('deck-counter').textContent = `Palos: ${totalClubs} / ${MAX_CLUBS} | Bolas: ${totalBalls} / ${MAX_BALLS}`; 
+      btn.disabled = !(totalClubs === MAX_CLUBS && totalBalls === MAX_BALLS);
     };
     grid.appendChild(div);
   });
@@ -769,7 +900,7 @@ function showSoftlockOverlay() {
   };
 }
 
-// ─── REWARDS UI ──────────────────────────────────────────────────────────────
+// ─── REWARDS & SHOP UI ───────────────────────────────────────────────────────
 function grantReward(numCards, titleText, callback) {
     const overlay = $('reward-overlay');
     $('reward-title').textContent = titleText;
@@ -790,6 +921,167 @@ function grantReward(numCards, titleText, callback) {
     
     overlay.style.display = 'flex';
     $('reward-btn').onclick = () => {
+        overlay.style.display = 'none';
+        if(callback) callback();
+    };
+}
+
+function showPickReward(picksAllowed, callback) {
+    const overlay = $('pick-reward-overlay');
+    $('pick-title').textContent = picksAllowed > 1 ? "¡Eagle o Mejor!" : "¡Birdie!";
+    $('pick-sub').textContent = `Elige ${picksAllowed} carta${picksAllowed>1?'s':''} de las 3 opciones.`;
+    const container = $('pick-cards');
+    container.innerHTML = '';
+    let picksLeft = picksAllowed;
+    const btn = $('pick-btn');
+    btn.disabled = true;
+
+    for(let i=0; i<3; i++) {
+        const randomTemplate = CARDS_POOL[Math.floor(Math.random() * CARDS_POOL.length)];
+        const div = document.createElement('div');
+        div.className = 'card face-down';
+        
+        const backDiv = document.createElement('div');
+        backDiv.className = 'card-back';
+        backDiv.style.fontSize = '30px';
+        backDiv.textContent = '❓';
+
+        const frontDiv = document.createElement('div');
+        frontDiv.className = 'card-front';
+        frontDiv.style.display = 'none';
+        frontDiv.style.flexDirection = 'column';
+        frontDiv.style.alignItems = 'center';
+        frontDiv.innerHTML = `<span class="card-type">${randomTemplate.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${randomTemplate.icon}</div><div class="card-name">${randomTemplate.name}</div>${randomTemplate.type==='club' ? `<div class="card-dist">~${randomTemplate.dist}m</div>` : `<div class="card-dist gold">${randomTemplate.icon}</div>`}`;
+
+        div.appendChild(backDiv);
+        div.appendChild(frontDiv);
+
+        let flipped = false;
+        div.onclick = () => {
+            if(!flipped && picksLeft > 0) {
+                flipped = true;
+                picksLeft--;
+                div.classList.remove('face-down');
+                if (randomTemplate.type === 'ball') div.classList.add('ball-card');
+                backDiv.style.display = 'none';
+                frontDiv.style.display = 'flex';
+                
+                state.drawPile.push(cloneCard(randomTemplate));
+                if(picksLeft === 0) btn.disabled = false;
+            }
+        };
+        container.appendChild(div);
+    }
+    overlay.style.display = 'flex';
+    btn.onclick = () => {
+        overlay.style.display = 'none';
+        shuffle(state.drawPile);
+        if(callback) callback();
+    };
+}
+
+function showShop(callback) {
+    const overlay = $('shop-overlay');
+    const container = $('shop-grid');
+    const btnBuy = $('shop-buy-btn');
+    const btnExit = $('shop-exit-btn');
+    const costSpan = $('shop-cost');
+    const moneySpan = $('shop-money');
+    const cardsSpan = $('shop-total-cards');
+
+    container.innerHTML = '';
+    let selectedItems = new Set();
+    let shopCards = [];
+
+    let numItems = Math.floor(Math.random() * 4);
+    let itemPrices = shuffle([50, 75, 100]).slice(0, numItems);
+
+    const ballsPool = CARDS_POOL.filter(c => c.type === 'ball');
+    const clubsPool = CARDS_POOL.filter(c => c.type === 'club');
+
+    for(let i=0; i<numItems; i++) {
+        let template = ballsPool[Math.floor(Math.random() * ballsPool.length)];
+        shopCards.push({ id: Math.random().toString(), template, price: itemPrices[i] });
+    }
+
+    for(let i=0; i<12 - numItems; i++) {
+        let template = clubsPool[Math.floor(Math.random() * clubsPool.length)];
+        shopCards.push({ id: Math.random().toString(), template, price: template.dist * 2 });
+    }
+
+    shuffle(shopCards);
+
+    let currentTotalCards = state.drawPile.length + state.hand.length;
+
+    function updateShopUI() {
+        let cost = 0;
+        selectedItems.forEach(item => cost += item.price);
+        costSpan.textContent = cost;
+        moneySpan.textContent = state.money;
+        
+        if (selectedItems.size > 0) {
+            cardsSpan.innerHTML = `${currentTotalCards} <span style="color:var(--accent)">(+${selectedItems.size})</span>`;
+        } else {
+            cardsSpan.textContent = currentTotalCards;
+        }
+
+        if (cost > state.money) {
+            costSpan.style.color = 'var(--danger)';
+            btnBuy.disabled = true;
+        } else if (selectedItems.size === 0) {
+            costSpan.style.color = 'var(--text)';
+            btnBuy.disabled = true;
+        } else {
+            costSpan.style.color = 'var(--accent)';
+            btnBuy.disabled = false;
+        }
+    }
+
+    shopCards.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'card' + (item.template.type==='ball'?' ball-card':'');
+        
+        let descHtml = item.template.desc ? `<div class="card-tooltip">${item.template.desc}</div>` : '';
+        div.innerHTML = `
+          <div class="shop-price">${item.price} 🪙</div>
+          <span class="card-type">${item.template.type==='club'?'Palo':'Bola'}</span>
+          <div class="card-icon">${item.template.icon}</div>
+          <div class="card-name">${item.template.name}</div>
+          ${item.template.type==='club' ? `<div class="card-dist">~${item.template.dist}m</div>` : `<div class="card-dist gold">${item.template.icon}</div>`}
+          ${descHtml}
+        `;
+
+        div.onclick = () => {
+            if (selectedItems.has(item)) {
+                selectedItems.delete(item);
+                div.classList.remove('shop-selected');
+            } else {
+                selectedItems.add(item);
+                div.classList.add('shop-selected');
+            }
+            updateShopUI();
+        };
+        container.appendChild(div);
+    });
+
+    updateShopUI();
+    overlay.style.display = 'flex';
+
+    btnBuy.onclick = () => {
+        let cost = 0;
+        selectedItems.forEach(item => {
+            cost += item.price;
+            state.drawPile.push(cloneCard(item.template));
+        });
+        state.money -= cost;
+        $('h-money').textContent = state.money;
+        
+        overlay.style.display = 'none';
+        shuffle(state.drawPile);
+        if(callback) callback();
+    };
+
+    btnExit.onclick = () => {
         overlay.style.display = 'none';
         if(callback) callback();
     };
@@ -848,12 +1140,10 @@ function updateReachDisplay() {
   const club = state.hand.find(c=>c.uid===state.selectedClub); if(!club) return;
   
   let dist = club.dist;
-  if(state.selectedBall) {
-     const bc = state.hand.find(b=>b.uid===state.selectedBall);
-     if(bc && bc.effect === 'power') dist = Math.round(dist*1.2);
-  }
+  const bc = state.selectedBall ? state.hand.find(b=>b.uid===state.selectedBall) : null;
+  if(bc && bc.effect === 'power') dist = Math.round(dist*1.25);
 
-  let { pDist } = getLiePenalty(club.dist, state.currentTerrain);
+  let { pDist } = getLiePenalty(club, bc, state.currentTerrain);
   let finalReach = Math.round(dist * (1 - pDist));
   let html = `~${finalReach} m`;
   if (pDist > 0) html += `<br><span style="color:var(--danger);font-size:9px;">Penalización Lie -${Math.round(pDist*100)}%</span>`;
@@ -867,9 +1157,9 @@ function executeShot() {
   const ballCard = state.selectedBall ? state.hand.find(b=>b.uid===state.selectedBall) : null;
   
   let baseDist = clubCard.dist;
-  if(ballCard?.effect==='power') baseDist = Math.round(baseDist*1.2);
+  if(ballCard?.effect==='power') baseDist = Math.round(baseDist*1.25);
   
-  let { pDist, pDevMulti } = getLiePenalty(clubCard.dist, state.currentTerrain);
+  let { pDist, pDevMulti } = getLiePenalty(clubCard, ballCard, state.currentTerrain);
   
   const actualBaseDist = baseDist * (1 - pDist);
   const powerFactor = Math.max(0.05, Math.pow(state.powerVal, 1.6));
@@ -897,6 +1187,7 @@ function executeShot() {
   }
   
   state.prevPos = {x: state.ball.x, y: state.ball.y};
+  state.shotTerrain = state.currentTerrain; 
   animateFlight(shotDist, deviation, clubCard, ballCard, dirX, dirY, perpX, perpY);
 }
 
@@ -908,12 +1199,12 @@ function animateFlight(dist, deviation, club, ballCard, dirX, dirY, perpX, perpY
   const landX = startX + dirX*distPx + perpX*devPx, landY = startY + dirY*distPx + perpY*devPx;
   const landingTerrain = getTerrain(landX, landY);
   
-  let rollDistM = dist * 0.15; 
-  if (landingTerrain === 'green') rollDistM *= 0.6;
-  else if (landingTerrain === 'fairway') rollDistM *= 1.2;
-  else if (landingTerrain === 'semirough') rollDistM *= 0.5;
-  else if (landingTerrain === 'rough') rollDistM *= 0.2;
-  else if (landingTerrain === 'deeprough') rollDistM *= 0.1;
+  let rollDistM = dist * 0.20; 
+  if (landingTerrain === 'green') rollDistM *= 0.8;
+  else if (landingTerrain === 'fairway') rollDistM *= 1.5;
+  else if (landingTerrain === 'semirough') rollDistM *= 0.6;
+  else if (landingTerrain === 'rough') rollDistM *= 0.3;
+  else if (landingTerrain === 'deeprough') rollDistM *= 0.15;
   else if (landingTerrain === 'bunker' || landingTerrain === 'agua') rollDistM *= 0.02;
   
   if (ballCard?.effect === 'fallstop') rollDistM = 0;
@@ -935,6 +1226,7 @@ function animateFlight(dist, deviation, club, ballCard, dirX, dirY, perpX, perpY
   
   function frame(ts){
     const elapsed = ts - phaseStart;
+    const W = cCourse.width, H = cCourse.height;
     
     if (animPhase === 'air') {
       const t = Math.min(elapsed / airDur, 1);
@@ -945,73 +1237,152 @@ function animateFlight(dist, deviation, club, ballCard, dirX, dirY, perpX, perpY
       state.ball.y = startY + dirY * (distPx * ease) + perpY * (devPx * (ease * ease)) - arcT * 80 * (dist / 200);
       state.ball.airR = 5 + (club.isPutt ? 0 : arcT * (dist > 150 ? 14 : 7));
       
+      if (ballCard?.effect === 'power') addFire(state.ball.x, state.ball.y);
+      if (ballCard?.effect === 'heavy') addRockTrail(state.ball.x, state.ball.y);
+
+      state.ballAnim.trace.push({x: state.ball.x, y: state.ball.y});
+      if (state.ballAnim.trace.length > 40) state.ballAnim.trace.shift();
+
       if (t >= 1) { 
         animPhase = 'roll'; 
         phaseStart = ts; 
         state.ball.airR = 5; 
       }
-    } else {
+    } else if (animPhase === 'roll') {
       const t = Math.min(elapsed / rollDur, 1);
       const ease = 1 - Math.pow(1 - t, 3);
       
-      state.ball.x = landX + (finalX - landX) * ease; 
-      state.ball.y = landY + (finalY - landY) * ease;
+      let cx = landX + (finalX - landX) * ease; 
+      let cy = landY + (finalY - landY) * ease;
+      let curTerr = getTerrain(cx, cy);
+
+      if (curTerr === 'agua') {
+          if (ballCard?.effect === 'frog') {
+              if (Math.random() < 0.15) addRipple(cx, cy);
+              state.ball.x = cx; state.ball.y = cy;
+          } else {
+              state.ball.x = cx; state.ball.y = cy;
+              addRipple(cx, cy);
+              endShot(false, 'agua'); return;
+          }
+      } else if (curTerr === 'bunker') {
+          state.ball.x = cx; state.ball.y = cy;
+          addDust(cx, cy);
+          endShot(false, 'bunker'); return;
+      } else {
+          state.ball.x = cx; state.ball.y = cy;
+      }
       
+      state.ballAnim.trace.push({x: state.ball.x, y: state.ball.y});
+      if (state.ballAnim.trace.length > 40) state.ballAnim.trace.shift();
+
       const dHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY);
-      
       if (dHole <= 10) { 
-          state.ball.x = hd.holeX; 
-          state.ball.y = hd.holeY; 
-          endShot(true); 
-          return; 
+          state.ball.x = hd.holeX; state.ball.y = hd.holeY; 
+          endShot(true); return; 
       }
       
       if (t >= 1) { 
-          endShot(false); 
-          return; 
+          let finalTerr = getTerrain(state.ball.x, state.ball.y);
+          if (finalTerr === 'agua') {
+              if (ballCard?.effect === 'frog') {
+                  animPhase = 'frog_skip'; 
+              } else {
+                  endShot(false, 'agua'); return; 
+              }
+          } else {
+              endShot(false); return; 
+          }
       }
+    } else if (animPhase === 'frog_skip') {
+        state.ball.x += fDX * 4; 
+        state.ball.y += fDY * 4;
+        if (Math.random() < 0.2) addRipple(state.ball.x, state.ball.y);
+        
+        state.ballAnim.trace.push({x: state.ball.x, y: state.ball.y});
+        if (state.ballAnim.trace.length > 40) state.ballAnim.trace.shift();
+
+        let skipTerr = getTerrain(state.ball.x, state.ball.y);
+        if (skipTerr !== 'agua') {
+            endShot(false, skipTerr); return;
+        }
+        
+        if (state.ball.x < -200 || state.ball.x > W + 200 || state.ball.y < -200 || state.ball.y > H + 200) {
+            endShot(false, 'ob'); return;
+        }
     }
-    drawBall(); drawUI(); requestAnimationFrame(frame);
+    drawBall(); drawUI(); drawVFX(ctxU); requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 }
 
-function endShot(inHoleEarly) {
+// ─── MULLIGAN UI DINAMICA ───
+function createMulliganUI() {
+    let mOverlay = $('mulligan-overlay');
+    if (!mOverlay) {
+        mOverlay = document.createElement('div');
+        mOverlay.id = 'mulligan-overlay';
+        mOverlay.className = 'overlay';
+        mOverlay.style.zIndex = 70;
+        mOverlay.innerHTML = `
+            <div class="msg-title" style="font-size:28px;" id="mul-title">¡Oh no!</div>
+            <div class="msg-sub">Tienes un ⏪ Mulligan en la mano. ¿Quieres gastarlo para rebobinar el tiempo y recuperar tu tiro (y las cartas gastadas)?</div>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button class="msg-btn" id="mul-btn-no" style="background:var(--surface2); color:var(--text);">Penalización</button>
+                <button class="msg-btn" id="mul-btn-yes">Usar Mulligan</button>
+            </div>
+        `;
+        $('game').appendChild(mOverlay);
+    }
+    return mOverlay;
+}
+
+function endShot(inHoleEarly, forcedTerrain) {
   const hd = state.holeData;
   state.distToHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY) / hd.scale;
   
-  const terrain = getTerrain(state.ball.x, state.ball.y);
+  const terrain = forcedTerrain || getTerrain(state.ball.x, state.ball.y);
   
   if(terrain === 'ob' || terrain === 'agua') {
-      state.ball.x = state.prevPos.x; 
-      state.ball.y = state.prevPos.y;
-      state.strokes++;
-      state.distToHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY) / hd.scale;
-      drawBall(); 
-      drawUI(); 
-      resetMetersUI();
-
-      const msgOverlay = $('msg-overlay');
-      $('logo-svg').style.display = 'none'; 
-      $('msg-title').textContent = terrain === 'agua' ? "AGUA" : "FUERA DE LÍMITES";
-      $('msg-sub').textContent = "Penalización: +1 golpe";
-      $('msg-btn').textContent = 'Continuar';
-      msgOverlay.style.display = 'flex';
-      
-      $('msg-btn').onclick = () => {
-          msgOverlay.style.display = 'none';
-          if (state.strokes >= hd.par + 5) {
-              holeComplete(true);
-          } else {
-              finishTurn(state.currentTerrain); 
-          }
-      };
-      return;
+      const mulliganIdx = state.hand.findIndex(c => c.effect === 'mulligan' && c.uid !== state.selectedBall);
+      if (mulliganIdx > -1) {
+          const mOverlay = createMulliganUI();
+          $('mul-title').textContent = terrain === 'agua' ? "¡Al Agua!" : "¡Fuera de Límites!";
+          $('logo-svg').style.display = 'none';
+          mOverlay.style.display = 'flex';
+          
+          $('mul-btn-no').onclick = () => {
+              mOverlay.style.display = 'none';
+              applyPenalty(terrain);
+          };
+          $('mul-btn-yes').onclick = () => {
+              mOverlay.style.display = 'none';
+              state.hand.splice(mulliganIdx, 1); 
+              state.ballAnim = null; 
+              state.ball.x = state.prevPos.x; 
+              state.ball.y = state.prevPos.y;
+              state.strokes--; 
+              state.distToHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY) / hd.scale;
+              
+              state.itemLocked = false;
+              vfxList = []; // Limpiamos efectos visuales
+              
+              drawCourse(); drawBall(); drawUI(); resetMetersUI();
+              state.phase = 'card_select';
+              updateShootBtnUI(); renderCards(); updateReachDisplay();
+              $('cards-row').style.pointerEvents = 'auto'; 
+              showToast("⏳ Tiempo rebobinado");
+          };
+          return;
+      } else {
+          applyPenalty(terrain);
+          return;
+      }
   }
   
-  drawBall(); 
-  drawUI(); 
-  resetMetersUI();
+  state.ballAnim = null;
+  vfxList = [];
+  drawCourse(); drawBall(); drawUI(); resetMetersUI();
 
   if(inHoleEarly || state.distToHole <= 3.0) { 
       setTimeout(() => holeComplete(false), 600); 
@@ -1022,6 +1393,33 @@ function endShot(inHoleEarly) {
   else {
       finishTurn(terrain);
   }
+}
+
+function applyPenalty(terrain) {
+    const hd = state.holeData;
+    state.ballAnim = null; 
+    vfxList = [];
+    state.ball.x = state.prevPos.x; 
+    state.ball.y = state.prevPos.y;
+    state.strokes++;
+    state.distToHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY) / hd.scale;
+    drawCourse(); drawBall(); drawUI(); resetMetersUI();
+
+    const msgOverlay = $('msg-overlay');
+    $('logo-svg').style.display = 'none'; 
+    $('msg-title').textContent = terrain === 'agua' ? "AGUA" : "FUERA DE LÍMITES";
+    $('msg-sub').textContent = "Penalización: +1 golpe";
+    $('msg-btn').textContent = 'Continuar';
+    msgOverlay.style.display = 'flex';
+    
+    $('msg-btn').onclick = () => {
+        msgOverlay.style.display = 'none';
+        if (state.strokes >= hd.par + 5) {
+            holeComplete(true);
+        } else {
+            finishTurn(state.currentTerrain); 
+        }
+    };
 }
 
 function finishTurn(terrain) {
@@ -1049,6 +1447,7 @@ function startHole(holeIdx) {
   state.paths = { fairway: null, semirough: null, rough: null, ob: null };
   state.cachedPattern = null; 
   state.ballAnim = null;
+  vfxList = [];
 
   state.hole = holeIdx;
   state.strokes = 0;
@@ -1057,6 +1456,7 @@ function startHole(holeIdx) {
   state.itemLocked = false;
   state.phase = 'card_select';
   state.currentTerrain = 'tee';
+  state.shotTerrain = 'tee';
 
   resizeCanvases();
 
@@ -1094,16 +1494,32 @@ function holeComplete(maxLimit = false) {
   
   $('h-score').textContent = state.totalScore === 0 ? 'E' : (state.totalScore > 0 ? '+' + state.totalScore : state.totalScore);
   
+  let earned = 0;
+  if (state.strokes === 1) earned += 450;
+  else if (diff === -3) earned += 300;
+  else if (diff === -2) earned += 225;
+  else if (diff === -1) earned += 150;
+  else if (diff === 0) earned += 100;
+
+  if (state.shotTerrain === 'fairway') earned += 50;
+
+  state.money += earned;
+  $('h-money').textContent = state.money;
+
   const names = {'-3':'Albatross', '-2':'Eagle', '-1':'Birdie', '0':'Par', '1':'Bogey', '2':'Doble Bogey'};
   const msgOverlay = $('msg-overlay');
   
   $('logo-svg').style.display = 'none'; 
+  
   if (maxLimit) {
       $('msg-title').textContent = "LÍMITE +5";
-      $('msg-sub').textContent = `Hoyo ${state.hole+1} — Has alcanzado el límite máximo.`;
+      $('msg-sub').innerHTML = `Hoyo ${state.hole+1} — Límite de golpes superado.<br><br>Ganaste ${earned} 🪙`;
+  } else if (state.strokes === 1) {
+      $('msg-title').textContent = "¡HOLE IN ONE!";
+      $('msg-sub').innerHTML = `¡Tiro perfecto!<br><br>Ganaste ${earned} 🪙`;
   } else {
       $('msg-title').textContent = names[String(diff)] || (diff > 0 ? '+' + diff : diff);
-      $('msg-sub').textContent = `Hoyo ${state.hole+1} completado en ${state.strokes} golpes.`;
+      $('msg-sub').innerHTML = `Hoyo ${state.hole+1} completado en ${state.strokes} golpes.<br><br>Ganaste ${earned} 🪙`;
   }
   
   $('msg-btn').textContent = 'Continuar';
@@ -1116,13 +1532,20 @@ function holeComplete(maxLimit = false) {
   newBtn.onclick = (e) => {
     e.preventDefault();
     $('msg-overlay').style.display = 'none'; 
-    
-    // Eliminamos la carta usada para terminar el hoyo
     discardPlayedCards();
     
     let queue = [];
-    if (diff <= -1) {
-        queue.push((cb) => grantReward(1, "¡Birdie o mejor! Carta extra", cb));
+
+    if (state.strokes === 1) {
+        queue.push((cb) => grantReward(3, "¡Hole In One! 3 Cartas directas", cb));
+    } else if (diff <= -2) {
+        queue.push((cb) => showPickReward(2, cb));
+    } else if (diff === -1) {
+        queue.push((cb) => showPickReward(1, cb));
+    }
+
+    if (state.hole === 5 || state.hole === 11) {
+        queue.push((cb) => showShop(cb));
     }
 
     function proceed() {

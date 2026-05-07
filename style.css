@@ -13,17 +13,16 @@
 html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;overflow:hidden;touch-action:none}
 #game{display:flex;flex-direction:column;height:100%;height:100dvh;max-width:900px;margin:0 auto;position:relative}
 
-/* HUD TOP */
-#hud{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px 10px;background:linear-gradient(to bottom,rgba(5,8,5,0.95),transparent);position:absolute;top:0;left:0;right:0;z-index:20;pointer-events:none}
-.hud-stat{text-align:center}
-.hud-label{font-size:9px;letter-spacing:0.2em;color:var(--text-muted);text-transform:uppercase;margin-bottom:2px}
-.hud-value{font-size:22px;font-weight:300;color:var(--accent);font-family:'DM Serif Display',serif;line-height:1}
-.hud-value.small{font-size:14px}
+/* HUD TOP: Bloque sólido */
+#hud{display:flex;justify-content:space-between;align-items:center;padding:calc(12px + env(safe-area-inset-top)) 20px 12px;background:var(--surface2);border-bottom:2px solid var(--border);z-index:20;flex-shrink:0;}
+.hud-stat{flex:1;text-align:center}
+.hud-label{font-size:10px;letter-spacing:0.1em;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px}
+.hud-value{font-size:20px;font-weight:400;color:var(--accent);font-family:'DM Serif Display',serif;line-height:1}
 
 /* WIND WIDGET LATERAL */
 #wind-widget {
   position: absolute;
-  top: 90px;
+  top: 15px;
   left: 15px;
   z-index: 20;
   display: flex;
@@ -36,34 +35,34 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255,255,255,0.1);
   width: 44px;
-  pointer-events: none; /* Así puedes hacer clic "a través" de él para apuntar */
+  pointer-events: none;
 }
 #wind-flag-wrap { position:relative; width:30px; height:30px; margin-bottom:2px; }
 .wind-speed { font-size:10px; color:var(--accent2); font-weight:900; letter-spacing:0; text-align:center; line-height:1.2; }
 
-/* CANVAS */
-#canvas-wrap{flex:1;position:relative;overflow:hidden; cursor:crosshair;}
+/* CANVAS (Se traga el espacio sobrante) */
+#canvas-wrap{flex:1;min-height:0;position:relative;overflow:hidden; cursor:crosshair;}
 canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #c-course{z-index:1}
 #c-ball{z-index:2}
 #c-ui{z-index:3}
 
-/* BOTTOM PANEL */
-#bottom{position:absolute;bottom:0;left:0;right:0;z-index:20;background:linear-gradient(to top,rgba(5,8,5,0.98) 75%,transparent);padding:14px 20px calc(20px + env(safe-area-inset-bottom))}
+/* BOTTOM PANEL: Bloque sólido */
+#bottom{background:var(--surface2); border-top:2px solid var(--border); padding:15px 20px calc(15px + env(safe-area-inset-bottom)); z-index:20; flex-shrink:0; display:flex; flex-direction:column; gap:12px;}
 #dist-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 2px}
 .dist-label{font-size:9px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase}
 .dist-val{font-size:13px;color:var(--accent);font-weight:500;display:flex;flex-direction:column;}
 
 /* CARDS & DECK */
-#hand-container{display:flex;gap:12px;justify-content:center;align-items:center;margin-bottom:12px}
+#hand-container{display:flex;gap:12px;justify-content:center;align-items:center;}
 #deck-pile{display:flex;flex-direction:column;align-items:center;justify-content:center;width:40px;height:60px;border:2px dashed var(--border);border-radius:6px;background:rgba(0,0,0,0.5)}
 .deck-count{font-size:14px;color:var(--text-muted);font-family:'DM Serif Display',serif}
 .deck-label{font-size:7px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px}
 
 #cards-row{display:flex;gap:6px;justify-content:center;}
 .card{width:76px;height:108px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.1s;padding:8px 6px;text-align:center;user-select:none}
-.card:hover{border-color:var(--accent);background:var(--surface2);transform:translateY(-4px)}
-.card.selected{border-color:var(--accent);background:var(--surface2);transform:translateY(-6px);box-shadow:0 0 18px rgba(168,216,120,0.25)}
+.card:hover{border-color:var(--accent);background:var(--surface);transform:translateY(-4px)}
+.card.selected{border-color:var(--accent);background:var(--surface);transform:translateY(-6px);box-shadow:0 0 18px rgba(168,216,120,0.25)}
 .card.ball-card{border-color:rgba(212,168,50,0.5)}
 .card.ball-card.selected{border-color:var(--accent2);box-shadow:0 0 18px rgba(212,168,50,0.25)}
 .card-icon{font-size:18px;margin-bottom:4px}
@@ -74,15 +73,58 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .card-type{position:absolute;top:5px;right:6px;font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em}
 .card-badge{position:absolute;top:-6px;left:-6px;background:var(--accent2);color:#000;font-size:10px;font-weight:bold;width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;z-index:2}
 
-/* Para marcar las cartas a devolver en el softlock */
+/* BOCADILLO TOOLTIP DE LAS CARTAS */
+.card-tooltip {
+  position: absolute;
+  bottom: 115%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent2);
+  color: #000;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  white-space: normal;
+  width: 140px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 100;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.card-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: var(--accent2) transparent transparent transparent;
+}
+.card:hover .card-tooltip, .card.show-tooltip .card-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -4px);
+}
+
+/* CARTAS BOCA ABAJO Y TIENDA */
 .card.to-return { border-color:var(--danger); background:rgba(232,72,50,0.1); transform:translateY(-4px); }
+.card.face-down { background: repeating-linear-gradient(45deg, var(--surface2), var(--surface2) 10px, var(--surface) 10px, var(--surface) 20px); border-color: var(--text-muted); }
+.shop-price { position:absolute; top:-10px; right:-10px; background:var(--accent2); color:#000; padding:4px 6px; border-radius:6px; font-size:10px; font-weight:bold; z-index:5; border:1px solid #000; }
+.card.shop-selected { border-color: var(--accent2); box-shadow: 0 0 15px rgba(212,168,50,0.4); transform: translateY(-4px); background:var(--surface); }
 
 /* METERS */
+#bottom-actions { border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px; margin-top: 5px; }
 #meters-row{display:flex;gap:10px;align-items:flex-end}
 #meter-power{flex:1}
 #meter-aim{flex:1}
 .meter-label{font-size:9px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px}
-.meter-track{height:12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);position:relative;overflow:hidden;}
+.meter-track{height:12px;background:var(--surface);border-radius:6px;border:1px solid var(--border);position:relative;overflow:hidden;}
 .meter-fill{height:100%;border-radius:4px;transition:none;position:absolute;top:0;left:0}
 #power-fill{background:linear-gradient(to right,#3d9a3d,#a8d878,#d4a832,#e84832)}
 #aim-fill{background:var(--accent);width:4px;left:50%;transform:translateX(-50%);border-radius:2px}
@@ -91,7 +133,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 
 #shoot-btn{padding:12px 22px;background:var(--accent);color:#0a150a;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;font-weight:bold;transition:all 0.1s;align-self:flex-end;min-width:90px;user-select:none;}
 #shoot-btn:active:not(:disabled){transform:scale(0.95)}
-#shoot-btn:disabled{background:var(--surface2);color:var(--text-muted);cursor:not-allowed;transform:none}
+#shoot-btn:disabled{background:var(--surface);color:var(--text-muted);cursor:not-allowed;transform:none}
 
 /* OVERLAYS & NOTIFICATIONS */
 .overlay{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(5,8,5,0.95);flex-direction:column;gap:16px;display:none;padding:20px;backdrop-filter:blur(4px)}
@@ -102,8 +144,9 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 
 .warning{color:#ff6b6b;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;margin-top:15px;border:1px solid #ff6b6b;padding:12px;border-radius:6px;background:rgba(255,107,107,0.15);font-weight:bold;text-align:center;line-height:1.4}
 
-#deck-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:800px;max-height:60vh;overflow-y:auto;padding:10px;align-content:flex-start}
-#deck-counter{font-family:'DM Serif Display',serif;font-size:24px;color:var(--accent2);margin-bottom:-5px}
+/* FIX AL SCROLL HORIZONTAL */
+#deck-grid, #shop-grid {display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:800px;max-height:50vh;overflow-y:auto; overflow-x:hidden; padding:15px 10px;align-content:flex-start}
+#deck-counter{font-family:'DM Serif Display',serif;color:var(--accent2);margin-bottom:-5px}
 
 /* SCORE TABLE */
 #score-table-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 4px; font-family: 'DM Mono', monospace; font-size: 13px; margin-top: 20px;}
@@ -124,6 +167,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
   .card-sub { display: none; }
   .card-type { display: none; }
   .card-badge { width:16px; height:16px; font-size:9px; top:-4px; left:-4px; }
-  #bottom { padding: 10px 10px calc(14px + env(safe-area-inset-bottom)); }
   #deck-pile { width: 34px; height: 50px; }
+  .hud-value { font-size: 16px; }
+  #bottom { padding: 10px 10px calc(14px + env(safe-area-inset-bottom)); }
 }
