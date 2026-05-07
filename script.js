@@ -28,10 +28,11 @@ CARDS_POOL.forEach((c,i) => c.baseId = c.id || `c${i}`);
 
 const PUTTER_CARD = {baseId:'putt', name:'Putt', dist:30, icon:'🕳', type:'club', isPutt:true};
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,4,4,5,4,3,5,4];
+const MAX_DECK_CARDS = 20;
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let state = {
-  collection: [], deckConfig: {}, drawPile: [], discardPile: [], hand: [],
+  deckConfig: {}, drawPile: [], hand: [],
   hole: 0, totalScore: 0, scores: [], holeData: null,
   ball: {x:0, y:0}, target: {x:0, y:0}, prevPos: {x:0, y:0}, currentTerrain: 'tee',
   strokes: 0, phase: 'card_select', selectedClub: null, selectedBall: null, itemLocked: false,
@@ -49,7 +50,6 @@ function shuffle(array) {
   return array;
 }
 
-// ─── TOAST NOTIFICATIONS ─────────────────────────────────────────────────────
 function showToast(text) {
   const t = document.createElement('div');
   t.textContent = text;
@@ -103,7 +103,7 @@ cUI.addEventListener('touchmove', updateAimTarget, {passive: false});
 cUI.addEventListener('mousedown', updateAimTarget);
 cUI.addEventListener('mousemove', (e) => { if(e.buttons > 0) updateAimTarget(e); });
 
-// ─── PROCEDURAL COURSE ─────────────────────────────
+// ─── PROCEDURAL COURSE Y TERRENO ─────────────────────────────
 function generateHole(holeIndex) {
   const W = cCourse.width, H = cCourse.height, par = HOLE_PARS[holeIndex];
   const logicalDist = par === 3 ? 150+Math.random()*30 : par === 4 ? 330+Math.random()*70 : 490+Math.random()*60;
@@ -425,6 +425,16 @@ function drawBall() {
   ctxB.fillStyle = '#fff'; ctxB.beginPath(); ctxB.arc(b.x, b.y, r, 0, Math.PI*2); ctxB.fill();
 }
 
+function getLiePenalty(clubDist, terrain) {
+  let lFactor = Math.max(0, Math.min(1, (clubDist - 80) / 160));
+  let pDist = 0, pDevMulti = 1;
+  if (terrain === 'rough') { pDist = 0.08 + (0.17 * lFactor); pDevMulti = 1.2 + (0.8 * lFactor); }
+  else if (terrain === 'semirough') { pDist = 0.03 + (0.07 * lFactor); pDevMulti = 1.1 + (0.4 * lFactor); }
+  else if (terrain === 'deeprough') { pDist = 0.12 + (0.25 * lFactor); pDevMulti = 1.4 + (1.0 * lFactor); }
+  else if (terrain === 'bunker') { pDist = 0.20 + (0.30 * lFactor); pDevMulti = 1.5 + (1.5 * lFactor); }
+  return { pDist, pDevMulti };
+}
+
 function drawUI() {
   const W=cUI.width, H=cUI.height;
   ctxU.clearRect(0,0,W,H);
@@ -432,18 +442,59 @@ function drawUI() {
   if(state.phase === 'card_select' && state.target) {
     const dx = state.target.x - state.ball.x, dy = state.target.y - state.ball.y;
     const ang = Math.atan2(dy, dx);
+    const targetPx = Math.hypot(dx, dy);
+
     const activeBall = state.hand.find(c => c.uid === state.selectedBall);
     const hasScope = activeBall && activeBall.effect === 'guide';
-    
     let isWarning = (state.currentTerrain === 'rough' || state.currentTerrain === 'semirough' || state.currentTerrain === 'deeprough' || state.currentTerrain === 'bunker');
 
-    ctxU.fillStyle = 'rgba(255,255,255,0.8)';
-    ctxU.beginPath(); ctxU.arc(state.target.x, state.target.y, 2.5, 0, Math.PI*2); ctxU.fill();
-    ctxU.strokeStyle = 'rgba(255,255,255,0.6)'; ctxU.lineWidth = 1.5;
-    ctxU.beginPath();
-    ctxU.moveTo(state.target.x - 7, state.target.y - 7); ctxU.lineTo(state.target.x + 7, state.target.y + 7);
-    ctxU.moveTo(state.target.x + 7, state.target.y - 7); ctxU.lineTo(state.target.x - 7, state.target.y + 7);
-    ctxU.stroke();
+    let maxReachPx = Infinity;
+    let overReach = false;
+
+    if (state.selectedClub) {
+        const club = state.hand.find(c => c.uid === state.selectedClub);
+        let clubDist = club.dist;
+        if(activeBall && activeBall.effect === 'power') clubDist = Math.round(clubDist*1.2);
+        
+        let { pDist } = getLiePenalty(club.dist, state.currentTerrain);
+        clubDist = Math.round(clubDist * (1 - pDist));
+
+        maxReachPx = clubDist * state.holeData.scale;
+        overReach = targetPx > maxReachPx;
+    }
+
+    // ─── MARCAS DE APUNTADO VISUAL (CROSSHAIRS) ───
+    if (overReach) {
+        // Marca ROJA en el target (donde hizo clic el usuario, fuera de alcance)
+        ctxU.fillStyle = 'rgba(232,72,50,0.8)';
+        ctxU.beginPath(); ctxU.arc(state.target.x, state.target.y, 2.5, 0, Math.PI*2); ctxU.fill();
+        ctxU.strokeStyle = 'rgba(232,72,50,0.6)'; ctxU.lineWidth = 1.5;
+        ctxU.beginPath();
+        ctxU.moveTo(state.target.x - 7, state.target.y - 7); ctxU.lineTo(state.target.x + 7, state.target.y + 7);
+        ctxU.moveTo(state.target.x + 7, state.target.y - 7); ctxU.lineTo(state.target.x - 7, state.target.y + 7);
+        ctxU.stroke();
+
+        // Marca BLANCA en el límite máximo real a lo largo de esa línea
+        const reachX = state.ball.x + Math.cos(ang) * maxReachPx;
+        const reachY = state.ball.y + Math.sin(ang) * maxReachPx;
+
+        ctxU.fillStyle = 'rgba(255,255,255,0.8)';
+        ctxU.beginPath(); ctxU.arc(reachX, reachY, 2.5, 0, Math.PI*2); ctxU.fill();
+        ctxU.strokeStyle = 'rgba(255,255,255,0.6)'; ctxU.lineWidth = 1.5;
+        ctxU.beginPath();
+        ctxU.moveTo(reachX - 7, reachY - 7); ctxU.lineTo(reachX + 7, reachY + 7);
+        ctxU.moveTo(reachX + 7, reachY - 7); ctxU.lineTo(reachX - 7, reachY + 7);
+        ctxU.stroke();
+    } else {
+        // Marca BLANCA en el target (es un tiro posible dentro del alcance)
+        ctxU.fillStyle = 'rgba(255,255,255,0.8)';
+        ctxU.beginPath(); ctxU.arc(state.target.x, state.target.y, 2.5, 0, Math.PI*2); ctxU.fill();
+        ctxU.strokeStyle = 'rgba(255,255,255,0.6)'; ctxU.lineWidth = 1.5;
+        ctxU.beginPath();
+        ctxU.moveTo(state.target.x - 7, state.target.y - 7); ctxU.lineTo(state.target.x + 7, state.target.y + 7);
+        ctxU.moveTo(state.target.x + 7, state.target.y - 7); ctxU.lineTo(state.target.x - 7, state.target.y + 7);
+        ctxU.stroke();
+    }
 
     ctxU.beginPath(); ctxU.moveTo(state.ball.x, state.ball.y);
     
@@ -453,20 +504,8 @@ function drawUI() {
       ctxU.stroke(); ctxU.setLineDash([]);
       
       if (state.selectedClub) {
-        const club = state.hand.find(c => c.uid === state.selectedClub);
-        let clubDist = club.dist;
-        if(activeBall && activeBall.effect === 'power') clubDist = Math.round(clubDist*1.2);
-        
-        let lFactor = Math.max(0, Math.min(1, (club.dist - 80) / 160));
-        let pDist = 0;
-        if (state.currentTerrain === 'rough') pDist = 0.08 + (0.17 * lFactor);
-        else if (state.currentTerrain === 'semirough') pDist = 0.03 + (0.07 * lFactor);
-        else if (state.currentTerrain === 'deeprough') pDist = 0.12 + (0.25 * lFactor);
-        else if (state.currentTerrain === 'bunker') pDist = 0.20 + (0.30 * lFactor);
-        clubDist = Math.round(clubDist * (1 - pDist));
-
-        const pxDist = clubDist * state.holeData.scale;
-        const reachX = state.ball.x + Math.cos(ang)*pxDist, reachY = state.ball.y + Math.sin(ang)*pxDist;
+        const reachX = state.ball.x + Math.cos(ang)*maxReachPx;
+        const reachY = state.ball.y + Math.sin(ang)*maxReachPx;
         ctxU.fillStyle = isWarning ? 'rgba(232,72,50,0.8)' : 'rgba(168,216,120,0.8)';
         ctxU.beginPath(); ctxU.arc(reachX, reachY, 5, 0, Math.PI*2); ctxU.fill();
       }
@@ -488,6 +527,62 @@ function drawUI() {
     ctxU.beginPath(); ctxU.moveTo(tr[0].x, tr[0].y);
     for(let i=1;i<tr.length;i++) ctxU.lineTo(tr[i].x, tr[i].y);
     ctxU.stroke(); ctxU.setLineDash([]);
+  }
+
+  // Llama a la actualización del medidor de fuerza predictivo
+  updatePowerMark();
+}
+
+// ─── MARCADOR DE FUERZA RECOMENDADO ──────────────────────────────────────────
+function updatePowerMark() {
+  let mark = $('power-mark');
+  
+  // Si no existe, creamos el elemento dinámicamente en el HTML
+  if (!mark) {
+      mark = document.createElement('div');
+      mark.id = 'power-mark';
+      mark.style.cssText = 'display:none; position:absolute; top:-2px; bottom:-2px; width:3px; background:#fff; z-index:5; transform:translateX(-50%); border-radius:2px; box-shadow: 0 0 5px rgba(255,255,255,0.8); pointer-events:none;';
+      $('power-track').appendChild(mark);
+  }
+
+  if (state.phase !== 'card_select' || !state.selectedClub || !state.target) {
+      mark.style.display = 'none';
+      return;
+  }
+
+  const club = state.hand.find(c => c.uid === state.selectedClub);
+  if (!club || club.isPutt) {
+      mark.style.display = 'none';
+      return;
+  }
+
+  let clubDist = club.dist;
+  if(state.selectedBall) {
+      const bc = state.hand.find(b=>b.uid===state.selectedBall);
+      if(bc && bc.effect === 'power') clubDist = Math.round(clubDist * 1.2);
+  }
+  let { pDist } = getLiePenalty(club.dist, state.currentTerrain);
+  clubDist = Math.round(clubDist * (1 - pDist));
+
+  const maxReachPx = clubDist * state.holeData.scale;
+  const dx = state.target.x - state.ball.x;
+  const dy = state.target.y - state.ball.y;
+  const targetPx = Math.hypot(dx, dy);
+
+  // Si el click está dentro de nuestro rango, mostramos la predicción de fuerza
+  // Dejamos un margen de 2px para no mostrarla si apunta exactamente al 100%
+  if (targetPx < maxReachPx - 2 && targetPx > 0) {
+      const targetDistM = targetPx / state.holeData.scale;
+      const powerFactor = targetDistM / clubDist;
+      
+      // La fórmula inversa a (powerVal^1.6)
+      let requiredPowerVal = Math.pow(powerFactor, 1/1.6);
+      requiredPowerVal = Math.max(0, Math.min(1, requiredPowerVal));
+
+      mark.style.left = (requiredPowerVal * 100) + '%';
+      mark.style.display = 'block';
+  } else {
+      mark.style.display = 'none';
   }
 }
 
@@ -512,7 +607,7 @@ function generateWind() {
 }
 
 function initDeck() {
-  state.drawPile = []; state.discardPile = []; state.hand = [];
+  state.drawPile = []; state.hand = [];
   for(const [baseId, count] of Object.entries(state.deckConfig)) {
       const template = CARDS_POOL.find(c => c.baseId === baseId);
       for(let i=0; i<count; i++) state.drawPile.push(cloneCard(template));
@@ -524,29 +619,31 @@ function drawCardsToHand() {
   const hasPutt = state.hand.some(c => c.isPutt);
   if (state.distToHole <= 40 && !hasPutt) {
       const clubIndex = state.hand.findIndex(c => c.type === 'club');
-      if(clubIndex !== -1) { state.discardPile.push(state.hand[clubIndex]); state.hand[clubIndex] = cloneCard(PUTTER_CARD); }
+      if(clubIndex !== -1) { state.hand[clubIndex] = cloneCard(PUTTER_CARD); }
       else state.hand.push(cloneCard(PUTTER_CARD));
   } else if (state.distToHole > 40 && hasPutt) state.hand = state.hand.filter(c => !c.isPutt);
 
-  let shuffleHappened = false;
   while(state.hand.length < 5) {
-      if (state.drawPile.length === 0) {
-          if (state.discardPile.length === 0) break;
-          state.drawPile = shuffle([...state.discardPile]); state.discardPile = [];
-          shuffleHappened = true;
-      }
+      if (state.drawPile.length === 0) break; // Las cartas se agotan
       state.hand.push(state.drawPile.pop());
   }
-  if (shuffleHappened) showToast("Mazo vacío. Barajando descartes...");
 
+  // Comprobar Soft-lock (mano vacía de palos)
   let validClubs = state.hand.filter(c => c.type === 'club');
-  if (validClubs.length === 0 && state.currentTerrain !== 'green') {
-      showToast("¡Mano sin palos! Descartando y robando...");
-      setTimeout(() => {
-          state.hand.forEach(c => state.discardPile.push(c));
-          state.hand = [];
-          drawCardsToHand();
-      }, 1500);
+  let clubsInDeck = state.drawPile.filter(c => c.type === 'club').length;
+
+  if (validClubs.length === 0 && state.currentTerrain !== 'green' && state.hand.length > 0) {
+      if (clubsInDeck === 0) {
+          $('gameover-overlay').style.display = 'flex';
+          return;
+      }
+      showSoftlockOverlay();
+      return;
+  }
+
+  // Game over si no hay cartas y no hay palos
+  if (state.hand.length === 0 && state.drawPile.length === 0) {
+      $('gameover-overlay').style.display = 'flex';
       return;
   }
 
@@ -554,9 +651,8 @@ function drawCardsToHand() {
 }
 
 function discardPlayedCards() {
-  const played = state.hand.filter(c => c.uid === state.selectedClub || c.uid === state.selectedBall);
+  // Las cartas jugadas DESAPARECEN. (Excepto el Putter, que se regenera dinámicamente).
   state.hand = state.hand.filter(c => c.uid !== state.selectedClub && c.uid !== state.selectedBall);
-  played.forEach(c => { if(!c.isPutt) state.discardPile.push(c); });
   state.selectedClub = null; state.selectedBall = null;
 }
 
@@ -626,21 +722,88 @@ function showDeckBuilder() {
       if (count === 2) {
           state.deckConfig[card.baseId] = 0; totalCards -= 2;
       } else if (count === 1) {
-          if (totalCards < 16) { state.deckConfig[card.baseId] = 2; totalCards++; }
+          if (totalCards < MAX_DECK_CARDS) { state.deckConfig[card.baseId] = 2; totalCards++; }
           else { state.deckConfig[card.baseId] = 0; totalCards--; }
-      } else if (count === 0 && totalCards < 16) {
+      } else if (count === 0 && totalCards < MAX_DECK_CARDS) {
           state.deckConfig[card.baseId] = 1; totalCards++;
       }
       
       count = state.deckConfig[card.baseId];
       if(count > 0) { div.classList.add('selected'); badge.style.display = 'flex'; badge.textContent = `x${count}`; }
       else { div.classList.remove('selected'); badge.style.display = 'none'; }
-      $('deck-counter').textContent = `${totalCards} / 16`; btn.disabled = totalCards !== 16;
+      $('deck-counter').textContent = `${totalCards} / ${MAX_DECK_CARDS}`; btn.disabled = totalCards !== MAX_DECK_CARDS;
     };
     grid.appendChild(div);
   });
   btn.onclick = () => { $('deck-overlay').style.display = 'none'; initDeck(); startHole(0); };
 }
+
+// ─── SOFTLOCK UI (DEVOLVER CARTAS) ───────────────────────────────────────────
+function showSoftlockOverlay() {
+  const overlay = $('softlock-overlay');
+  const container = $('softlock-cards');
+  const btn = $('softlock-btn');
+  container.innerHTML = '';
+  let selectedToReturn = new Set();
+  
+  state.hand.forEach((card) => {
+    const div = document.createElement('div');
+    div.className = 'card' + (card.type==='ball'?' ball-card':'');
+    div.innerHTML = `<span class="card-type">${card.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${card.icon}</div><div class="card-name">${card.name}</div><div class="card-dist gold">${card.icon}</div>`;
+    
+    div.onclick = () => {
+       if(selectedToReturn.has(card.uid)) {
+           selectedToReturn.delete(card.uid);
+           div.classList.remove('to-return');
+       } else {
+           selectedToReturn.add(card.uid);
+           div.classList.add('to-return');
+       }
+       btn.disabled = selectedToReturn.size === 0;
+    };
+    container.appendChild(div);
+  });
+  
+  btn.disabled = true;
+  overlay.style.display = 'flex';
+  
+  btn.onclick = () => {
+      overlay.style.display = 'none';
+      let cardsToReturn = state.hand.filter(c => selectedToReturn.has(c.uid));
+      state.hand = state.hand.filter(c => !selectedToReturn.has(c.uid));
+      
+      cardsToReturn.forEach(c => state.drawPile.push(c));
+      shuffle(state.drawPile);
+      drawCardsToHand();
+  };
+}
+
+// ─── REWARDS UI ──────────────────────────────────────────────────────────────
+function grantReward(numCards, titleText, callback) {
+    const overlay = $('reward-overlay');
+    $('reward-title').textContent = titleText;
+    const container = $('reward-cards');
+    container.innerHTML = '';
+    
+    for(let i=0; i<numCards; i++) {
+        const randomTemplate = CARDS_POOL[Math.floor(Math.random() * CARDS_POOL.length)];
+        const newCard = cloneCard(randomTemplate);
+        state.drawPile.push(newCard); 
+        
+        const div = document.createElement('div');
+        div.className = 'card' + (newCard.type==='ball'?' ball-card':'');
+        div.innerHTML = `<span class="card-type">${newCard.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${newCard.icon}</div><div class="card-name">${newCard.name}</div>${newCard.type==='club' ? `<div class="card-dist">~${newCard.dist}m</div>` : `<div class="card-dist gold">${newCard.icon}</div>`}`;
+        container.appendChild(div);
+    }
+    shuffle(state.drawPile);
+    
+    overlay.style.display = 'flex';
+    $('reward-btn').onclick = () => {
+        overlay.style.display = 'none';
+        if(callback) callback();
+    };
+}
+
 
 // ─── SHOT MECHANICS ──────────────────────────────────────────────────────────
 let powerRaf=null, aimRaf=null;
@@ -699,13 +862,7 @@ function updateReachDisplay() {
      if(bc && bc.effect === 'power') dist = Math.round(dist*1.2);
   }
 
-  let lFactor = Math.max(0, Math.min(1, (dist - 80) / 160));
-  let pDist = 0;
-  if (state.currentTerrain === 'rough') pDist = 0.08 + (0.17 * lFactor);
-  else if (state.currentTerrain === 'semirough') pDist = 0.03 + (0.07 * lFactor);
-  else if (state.currentTerrain === 'deeprough') pDist = 0.12 + (0.25 * lFactor);
-  else if (state.currentTerrain === 'bunker') pDist = 0.20 + (0.30 * lFactor);
-  
+  let { pDist } = getLiePenalty(club.dist, state.currentTerrain);
   let finalReach = Math.round(dist * (1 - pDist));
   let html = `~${finalReach} m`;
   if (pDist > 0) html += `<br><span style="color:var(--danger);font-size:9px;">Penalización Lie -${Math.round(pDist*100)}%</span>`;
@@ -721,13 +878,7 @@ function executeShot() {
   let baseDist = clubCard.dist;
   if(ballCard?.effect==='power') baseDist = Math.round(baseDist*1.2);
   
-  // APLICAR LIE PENALTY
-  let lFactor = Math.max(0, Math.min(1, (clubCard.dist - 80) / 160));
-  let pDist = 0, pDevMulti = 1;
-  if (state.currentTerrain === 'rough') { pDist = 0.08 + (0.17 * lFactor); pDevMulti = 1.2 + (0.8 * lFactor); }
-  else if (state.currentTerrain === 'semirough') { pDist = 0.03 + (0.07 * lFactor); pDevMulti = 1.1 + (0.4 * lFactor); }
-  else if (state.currentTerrain === 'deeprough') { pDist = 0.12 + (0.25 * lFactor); pDevMulti = 1.4 + (1.0 * lFactor); }
-  else if (state.currentTerrain === 'bunker') { pDist = 0.20 + (0.30 * lFactor); pDevMulti = 1.5 + (1.5 * lFactor); }
+  let { pDist, pDevMulti } = getLiePenalty(clubCard.dist, state.currentTerrain);
   
   const actualBaseDist = baseDist * (1 - pDist);
   const powerFactor = Math.max(0.05, Math.pow(state.powerVal, 1.6));
@@ -748,8 +899,9 @@ function executeShot() {
     
     if(ballCard?.effect !== 'heavy') {
        const wX = Math.cos(state.wind.dir) * state.wind.speed, wY = Math.sin(state.wind.dir) * state.wind.speed;
-       deviation += (wX * perpX + wY * perpY) * (shotDist/100) * 1.5;
-       shotDist += (wX * dirX + wY * dirY) * (shotDist/100) * 1.0; 
+       // ─── LOS NUEVOS MULTIPLICADORES DE VIENTO ───
+       deviation += (wX * perpX + wY * perpY) * (shotDist/100) * 2.5; 
+       shotDist += (wX * dirX + wY * dirY) * (shotDist/100) * 2.0; 
        shotDist = Math.max(5, shotDist);
     }
   }
@@ -839,12 +991,18 @@ function endShot(inHoleEarly) {
   state.distToHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY) / hd.scale;
   
   const terrain = getTerrain(state.ball.x, state.ball.y);
-  drawBall(); 
-  drawUI(); 
-  resetMetersUI();
   
   if(terrain === 'ob' || terrain === 'agua') {
+      state.ball.x = state.prevPos.x; 
+      state.ball.y = state.prevPos.y;
+      state.strokes++;
+      state.distToHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY) / hd.scale;
+      drawBall(); 
+      drawUI(); 
+      resetMetersUI();
+
       const msgOverlay = $('msg-overlay');
+      $('logo-svg').style.display = 'none'; 
       $('msg-title').textContent = terrain === 'agua' ? "AGUA" : "FUERA DE LÍMITES";
       $('msg-sub').textContent = "Penalización: +1 golpe";
       $('msg-btn').textContent = 'Continuar';
@@ -852,11 +1010,6 @@ function endShot(inHoleEarly) {
       
       $('msg-btn').onclick = () => {
           msgOverlay.style.display = 'none';
-          state.ball.x = state.prevPos.x; 
-          state.ball.y = state.prevPos.y;
-          state.strokes++;
-          state.distToHole = Math.hypot(state.ball.x - hd.holeX, state.ball.y - hd.holeY) / hd.scale;
-          
           if (state.strokes >= hd.par + 5) {
               holeComplete(true);
           } else {
@@ -866,6 +1019,10 @@ function endShot(inHoleEarly) {
       return;
   }
   
+  drawBall(); 
+  drawUI(); 
+  resetMetersUI();
+
   if(inHoleEarly || state.distToHole <= 3.0) { 
       setTimeout(() => holeComplete(false), 600); 
   } 
@@ -950,6 +1107,7 @@ function holeComplete(maxLimit = false) {
   const names = {'-3':'Albatross', '-2':'Eagle', '-1':'Birdie', '0':'Par', '1':'Bogey', '2':'Doble Bogey'};
   const msgOverlay = $('msg-overlay');
   
+  $('logo-svg').style.display = 'none'; 
   if (maxLimit) {
       $('msg-title').textContent = "LÍMITE +5";
       $('msg-sub').textContent = `Hoyo ${state.hole+1} — Has alcanzado el límite máximo.`;
@@ -958,7 +1116,7 @@ function holeComplete(maxLimit = false) {
       $('msg-sub').textContent = `Hoyo ${state.hole+1} completado en ${state.strokes} golpes.`;
   }
   
-  $('msg-btn').textContent = 'Siguiente Hoyo';
+  $('msg-btn').textContent = 'Continuar';
   msgOverlay.style.display = 'flex';
   
   const oldBtn = $('msg-btn');
@@ -969,19 +1127,32 @@ function holeComplete(maxLimit = false) {
     e.preventDefault();
     $('msg-overlay').style.display = 'none'; 
     
-    state.hand.forEach(c => {
-        if(!c.isPutt) state.discardPile.push(c);
-    });
-    
     state.hand = []; 
     state.selectedClub = null;
     state.selectedBall = null;
     
-    if(state.hole === 8 || state.hole === 17) {
-        showScorecard(state.hole === 8);
-    } else {
-        startHole(state.hole + 1);
+    let queue = [];
+    if (diff <= -1) {
+        queue.push((cb) => grantReward(1, "¡Birdie o mejor! Carta extra", cb));
     }
+
+    function proceed() {
+        if(state.hole === 8 || state.hole === 17) {
+            showScorecard(state.hole === 8);
+        } else {
+            startHole(state.hole + 1);
+        }
+    }
+
+    function runQueue() {
+        if(queue.length > 0) {
+            let task = queue.shift();
+            task(runQueue);
+        } else {
+            proceed();
+        }
+    }
+    runQueue();
   };
 }
 
@@ -1008,12 +1179,18 @@ function showScorecard(isMidGame) {
   
   $('score-table-wrap').innerHTML = html;
   
-  $('score-btn').textContent = isMidGame ? 'Jugar la Vuelta' : 'Nueva Partida';
+  $('score-btn').textContent = isMidGame ? 'Continuar' : 'Nueva Partida';
   $('score-overlay').style.display = 'flex';
   
   $('score-btn').onclick = () => {
     $('score-overlay').style.display = 'none';
-    if(isMidGame) startHole(9); else location.reload();
+    if(isMidGame) {
+        grantReward(3, "¡Front 9! 3 Cartas extra", () => {
+            startHole(9);
+        });
+    } else {
+        location.reload();
+    }
   };
 }
 
