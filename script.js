@@ -9,7 +9,6 @@ const CARDS_POOL = [
   {name:'Pitch W', dist:110, icon:'🎯', type:'club'},{name:'Gap W', dist:95,  icon:'🎯', type:'club'},
   {name:'Sand W', dist:80,  icon:'⏳', type:'club'},{name:'Lob W', dist:60,  icon:'📐', type:'club'},
   {name:'Power', icon:'🔥', effect:'power', desc:'+25% distancia', type:'ball'},
-  {name:'Backspin', icon:'↩', effect:'Backspin', desc:'Retroceso', type:'ball'},
   {name:'Heavy', icon:'🪨', effect:'heavy', desc:'Ignora viento', type:'ball'},
   {name:'Mulligan', icon:'⏪', effect:'mulligan', desc:'Rebobina tiro (OB/Agua)', type:'ball'},
   {name:'Rana', icon:'🐸', effect:'frog', desc:'Rebota sobre agua', type:'ball'},
@@ -31,6 +30,7 @@ let state = {
 function cloneCard(c) { return {...c, uid: Math.random().toString(36).substr(2, 9)}; }
 function shuffle(array) { for(let i=array.length-1; i>0; i--){ const j=Math.floor(Math.random()*(i+1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
 function showToast(text) { const t = document.createElement('div'); t.textContent = text; t.style.cssText = 'position:absolute;top:25%;left:50%;transform:translate(-50%,-50%);background:var(--accent2);color:#000;padding:12px 24px;border-radius:30px;font-family:"DM Mono",monospace;font-size:12px;text-transform:uppercase;font-weight:bold;z-index:100;box-shadow:0 10px 20px rgba(0,0,0,0.5);pointer-events:none;animation:toastFade 2s forwards;text-align:center;'; $('game').appendChild(t); setTimeout(()=>t.remove(), 2000); }
+const getTotalBalls = () => state.hand.filter(c=>c.type==='ball').length + state.drawPile.filter(c=>c.type==='ball').length;
 
 let vfxList = [];
 function addRipple(x, y) { vfxList.push({type: 'ripple', x, y, age: 0, maxAge: 600}); }
@@ -62,11 +62,20 @@ function autoSelectBestClub() {
 }
 
 const cCourse = $('c-course'), cBall = $('c-ball'), cUI = $('c-ui');
+let CW = 0, CH = 0, DPR = 1;
 const ctxC = cCourse.getContext('2d'), ctxB = cBall.getContext('2d'), ctxU = cUI.getContext('2d');
 
 function resizeCanvases() {
   const wrap = $('canvas-wrap');
-  [cCourse, cBall, cUI].forEach(c => { c.width = wrap.clientWidth; c.height = wrap.clientHeight; });
+  CW = wrap.clientWidth; CH = wrap.clientHeight;
+  DPR = window.devicePixelRatio || 1;
+  [cCourse, cBall, cUI].forEach(c => { 
+      c.width = CW * DPR; 
+      c.height = CH * DPR; 
+      c.style.width = CW + 'px'; 
+      c.style.height = CH + 'px';
+      c.getContext('2d').setTransform(DPR, 0, 0, DPR, 0, 0);
+  });
   if(state.holeData) { drawCourse(); drawBall(); drawUI(); }
 }
 window.addEventListener('resize', resizeCanvases);
@@ -84,12 +93,13 @@ function bezierPoint(p0,p1,p2,p3,t) { return (1-t)**3*p0 + 3*(1-t)**2*t*p1 + 3*(
 function bezierTangent(p0,p1,p2,p3,t) { return 3*(1-t)**2*(p1-p0) + 6*(1-t)*t*(p2-p1) + 3*t**2*(p3-p2); }
 
 function generateHole(holeIndex) {
-  const W = cCourse.width, H = cCourse.height, par = HOLE_PARS[holeIndex], difficulty = holeIndex / 17;
-  const teeY = H * 0.88; const visualLengthPx = H * 0.72;
+  const W = CW, H = CH, par = HOLE_PARS[holeIndex], difficulty = holeIndex / 17;
+  const teeY = H * 0.88; const visualLengthPx = H * 0.72; 
   const logicalDist = par === 3 ? 150+Math.random()*30 : par === 4 ? 330+Math.random()*70 : 490+Math.random()*60;
   const scale = visualLengthPx / logicalDist;
   const teeX = W/2, holeX = W/2 + (Math.random()-0.5)*W*(0.2 + difficulty*0.4), holeY = teeY - visualLengthPx;
-  const dev1 = (Math.random()-0.5)*W*(0.3+difficulty*0.5), dev2 = (Math.random()-0.5)*W*(0.3+difficulty*0.5);
+  
+  const dev1 = (Math.random()-0.5)*W*(0.15+difficulty*0.25), dev2 = (Math.random()-0.5)*W*(0.15+difficulty*0.25);
   const cp1x = W/2 + dev1, cp1y = teeY - visualLengthPx*(0.2 + Math.random()*0.2);
   const cp2x = holeX + dev2, cp2y = teeY - visualLengthPx*(0.5 + Math.random()*0.3);
   const fairwayW = Math.max(45, 90 - difficulty*35) + Math.random()*20;
@@ -112,18 +122,29 @@ function generateHole(holeIndex) {
   }
   
   const greenR = Math.max(30, 50 - difficulty*15);
+  
+  // EL SÚPER BOSQUE: Generamos cientos de Pinos, Arbustos y Flores empaquetados fuera del campo
   let trees = [];
-  for(let i=0;i<Math.floor(60+difficulty*60);i++) {
+  for(let i=0; i<Math.floor(600+difficulty*400); i++) {
       let tx, ty, valid = false, attempts = 0;
-      while(!valid && attempts < 15) {
+      while(!valid && attempts < 20) {
           attempts++;
-          if (trees.length > 0 && Math.random() < 0.75) { const s = trees[Math.floor(Math.random()*trees.length)]; tx = s.x+(Math.random()-0.5)*35; ty = s.y+(Math.random()-0.5)*35; } else { tx = Math.random()*W; ty = Math.random()*H; }
-          if (Math.hypot(tx-teeX, ty-teeY) < 40 || Math.hypot(tx-holeX, ty-holeY) < greenR+20) continue;
+          if (trees.length > 0 && Math.random() < 0.6) { 
+              const s = trees[Math.floor(Math.random()*trees.length)]; 
+              tx = s.x+(Math.random()-0.5)*40; ty = s.y+(Math.random()-0.5)*40; 
+          } else { 
+              tx = (Math.random()-0.2)*W*1.4; ty = (Math.random()-0.2)*H*1.4; 
+          }
+          if (Math.hypot(tx-teeX, ty-teeY) < 45 || Math.hypot(tx-holeX, ty-holeY) < greenR+25) continue;
           let minD = Infinity;
           for(let t=0; t<=1; t+=0.05) minD = Math.min(minD, Math.hypot(tx-bezierPoint(teeX,cp1x,cp2x,holeX,t), ty-bezierPoint(teeY,cp1y,cp2y,holeY,t)));
-          if (Math.random() < 0.03 || minD > fairwayW/2 + 5) valid = true;
+          if (minD > fairwayW/2 + 25 || Math.random() < 0.02) valid = true;
       }
-      if(valid) trees.push({x: tx, y: ty, r: 8 + Math.random()*12});
+      if(valid) {
+          let type = 'tree', r = Math.random();
+          if(r<0.3) type='pine'; else if(r<0.6) type='bush'; else if(r<0.75) type='flowers';
+          trees.push({x: tx, y: ty, r: 8 + Math.random()*12, type: type});
+      }
   }
   trees.sort((a,b) => a.y - b.y);
 
@@ -141,13 +162,19 @@ function createTerrainPaths(hd) {
 
         for(let i=0; i<=steps; i++) {
             const tt = seg[0] + (i/steps) * (seg[1] - seg[0]);
-            const bx = bezierPoint(hd.teeX, hd.cp1x, hd.cp2x, hd.holeX, tt), by = bezierPoint(hd.teeY, hd.cp1y, hd.cp2y, hd.holeY, tt);
-            const dx = bezierTangent(hd.teeX, hd.cp1x, hd.cp2x, hd.holeX, tt), dy = bezierTangent(hd.teeY, hd.cp1y, hd.cp2y, hd.holeY, tt);
+            const bx = bezierPoint(hd.teeX, hd.cp1x, hd.cp2x, hd.holeX, tt);
+            const by = bezierPoint(hd.teeY, hd.cp1y, hd.cp2y, hd.holeY, tt);
+            const dx = bezierTangent(hd.teeX, hd.cp1x, hd.cp2x, hd.holeX, tt);
+            const dy = bezierTangent(hd.teeY, hd.cp1y, hd.cp2y, hd.holeY, tt);
             const len = Math.hypot(dx, dy) || 1, nx = -dy/len, ny = dx/len;
             const env = Math.sin((i/steps) * Math.PI), wP = 0.6 + tt * 0.4;
 
-            const fwL = (hd.fairwayW/2) * (1 + (Math.sin(tt*Math.PI*5+hd.fNoise.l1)*0.25 + Math.sin(tt*Math.PI*9+hd.fNoise.l2)*0.15)*env) * wP;
-            const fwR = (hd.fairwayW/2) * (1 + (Math.sin(tt*Math.PI*4+hd.fNoise.r1)*0.25 + Math.sin(tt*Math.PI*11+hd.fNoise.r2)*0.15)*env) * wP;
+            const noiseL = (Math.sin(tt*Math.PI*5+hd.fNoise.l1)*0.15 + Math.sin(tt*Math.PI*9+hd.fNoise.l2)*0.1)*env;
+            const noiseR = (Math.sin(tt*Math.PI*4+hd.fNoise.r1)*0.15 + Math.sin(tt*Math.PI*11+hd.fNoise.r2)*0.1)*env;
+
+            const fwL = Math.max(5, (hd.fairwayW/2) * (1 + noiseL) * wP);
+            const fwR = Math.max(5, (hd.fairwayW/2) * (1 + noiseR) * wP);
+
             const srW_L = 10 + Math.max(5, (hd.fairwayW*0.3)*(1+(Math.sin(tt*Math.PI*6+hd.fNoise.srL1)*0.2+Math.sin(tt*Math.PI*13+hd.fNoise.srL2)*0.1)*env));
             const srW_R = 10 + Math.max(5, (hd.fairwayW*0.3)*(1+(Math.sin(tt*Math.PI*5+hd.fNoise.srR1)*0.2+Math.sin(tt*Math.PI*15+hd.fNoise.srR2)*0.1)*env));
             const obL = (Math.sin(tt*Math.PI*3+hd.fNoise.l1)*40*env)+70, obR = (Math.sin(tt*Math.PI*2+hd.fNoise.r2)*40*env)+70;
@@ -184,14 +211,20 @@ function createTerrainPaths(hd) {
 function getTerrain(x, y) {
   try {
     const hd = state.holeData; if(!hd) return 'fairway';
-    for (let r of hd.rivers) if (Math.abs(y - (r.y + (x - cCourse.width/2) * r.angle + Math.sin(x/50 + r.phase)*10)) <= r.width/2) return 'agua';
+    
+    // CORRECCIÓN RADAR O.B.: Sincronizamos las coordenadas con la resolución Retina del móvil
+    const px = x * DPR, py = y * DPR;
+
+    for (let r of hd.rivers) if (Math.abs(y - (r.y + (x - CW/2) * r.angle + Math.sin(x/50 + r.phase)*10)) <= r.width/2) return 'agua';
     for (let l of hd.lakes) { const nx=x-l.cx, ny=y-l.cy, rdx=nx*Math.cos(-l.angle)-ny*Math.sin(-l.angle), rdy=nx*Math.sin(-l.angle)+ny*Math.cos(-l.angle); if((rdx*rdx)/(l.rx*l.rx)+(rdy*rdy)/(l.ry*l.ry)<=1) return 'agua'; }
     if (Math.hypot(x - hd.holeX, y - hd.holeY) <= hd.greenR + 6) return 'green';
     for(let s of hd.sandTraps) { const nx=x-s.cx, ny=y-s.cy, rdx=nx*Math.cos(-s.angle)-ny*Math.sin(-s.angle), rdy=nx*Math.sin(-s.angle)+ny*Math.cos(-s.angle); if((rdx*rdx)/(s.rx*s.rx)+(rdy*rdy)/(s.ry*s.ry)<=1) return 'bunker'; }
-    if (state.paths.fairway && ctxC.isPointInPath(state.paths.fairway, x, y)) return 'fairway';
-    if (state.paths.semirough && ctxC.isPointInPath(state.paths.semirough, x, y)) return 'semirough';
-    if (state.paths.rough && ctxC.isPointInPath(state.paths.rough, x, y)) return 'rough';
-    if (state.paths.ob && ctxC.isPointInPath(state.paths.ob, x, y)) return 'deeprough';
+    
+    // Leemos usando PX y PY adaptados al DPR
+    if (state.paths.fairway && ctxC.isPointInPath(state.paths.fairway, px, py)) return 'fairway';
+    if (state.paths.semirough && ctxC.isPointInPath(state.paths.semirough, px, py)) return 'semirough';
+    if (state.paths.rough && ctxC.isPointInPath(state.paths.rough, px, py)) return 'rough';
+    if (state.paths.ob && ctxC.isPointInPath(state.paths.ob, px, py)) return 'deeprough';
     return 'ob';
   } catch(e) { return 'fairway'; }
 }
@@ -206,17 +239,26 @@ function getFairwayPattern(ctx) {
 }
 
 function drawCourse() {
-  const W = cCourse.width, H = cCourse.height, hd = state.holeData; if(!hd) return;
-  ctxC.fillStyle = '#111a0e'; ctxC.fillRect(0,0,W,H); state.paths = createTerrainPaths(hd);
-  ctxC.fillStyle = '#111a0e'; ctxC.fill(state.paths.ob);
+  const W = CW, H = CH, hd = state.holeData; if(!hd) return;
+  
+  // SOLUCIÓN ARTIFACTS: El fondo lienzo ahora es VERDE O.B. PROFUNDO. Si se crean agujeros se verá esto, quedando perfecto.
+  ctxC.fillStyle = '#111a0e';
+  ctxC.fillRect(0,0,W,H);
+
+  state.paths = createTerrainPaths(hd);
+  
+  // Líneas punteadas del límite del campo
   ctxC.setLineDash([8,8]); ctxC.strokeStyle = 'rgba(255,255,255,0.4)'; ctxC.lineWidth = 2;
   if(hd.obFlanks.left.length) { ctxC.beginPath(); ctxC.moveTo(hd.obFlanks.left[0].x, hd.obFlanks.left[0].y); for(let i=1; i<hd.obFlanks.left.length; i++) ctxC.lineTo(hd.obFlanks.left[i].x, hd.obFlanks.left[i].y); ctxC.stroke(); }
   if(hd.obFlanks.right.length) { ctxC.beginPath(); ctxC.moveTo(hd.obFlanks.right[0].x, hd.obFlanks.right[0].y); for(let i=1; i<hd.obFlanks.right.length; i++) ctxC.lineTo(hd.obFlanks.right[i].x, hd.obFlanks.right[i].y); ctxC.stroke(); }
   ctxC.setLineDash([]);
+  
   ctxC.fillStyle = '#162312'; for(let i=0; i<1500; i++) { let x=Math.random()*W, y=Math.random()*H, t=getTerrain(x,y); if(t==='rough'||t==='semirough'||t==='deeprough') ctxC.fillRect(x,y,3,2); }
+  
   if(state.paths.rough) { ctxC.fillStyle='#1e3218'; ctxC.fill(state.paths.rough); }
   if(state.paths.semirough) { ctxC.fillStyle='#223d1b'; ctxC.fill(state.paths.semirough); }
   if(state.paths.fairway) { ctxC.fillStyle=getFairwayPattern(ctxC)||'#2b4d1f'; ctxC.fill(state.paths.fairway); }
+  
   ctxC.fillStyle='#1c3d5a'; hd.rivers.forEach(r => { ctxC.beginPath(); for(let x=0;x<=W;x+=20) ctxC[x===0?'moveTo':'lineTo'](x, r.y+(x-W/2)*r.angle+Math.sin(x/50+r.phase)*10 - r.width/2); for(let x=W;x>=0;x-=20) ctxC.lineTo(x, r.y+(x-W/2)*r.angle+Math.sin(x/50+r.phase)*10 + r.width/2); ctxC.fill(); ctxC.strokeStyle='#2b5f8c'; ctxC.lineWidth=1; ctxC.beginPath(); for(let x=20;x<W;x+=40){ let y=r.y+(x-W/2)*r.angle+Math.sin(x/50+r.phase)*10; ctxC.moveTo(x,y); ctxC.lineTo(x+10,y); } ctxC.stroke(); });
   hd.lakes.forEach(l => { ctxC.save(); ctxC.translate(l.cx, l.cy); ctxC.rotate(l.angle); ctxC.fillStyle='#1c3d5a'; ctxC.beginPath(); ctxC.ellipse(0,0,Math.max(0.1,l.rx),Math.max(0.1,l.ry),0,0,Math.PI*2); ctxC.fill(); ctxC.strokeStyle='#2b5f8c'; ctxC.lineWidth=1; ctxC.beginPath(); ctxC.moveTo(-l.rx*0.5,0); ctxC.lineTo(l.rx*0.5,0); ctxC.stroke(); ctxC.beginPath(); ctxC.moveTo(-l.rx*0.3,l.ry*0.4); ctxC.lineTo(l.rx*0.3,l.ry*0.4); ctxC.stroke(); ctxC.restore(); });
   hd.sandTraps.forEach(s => { ctxC.save(); ctxC.translate(s.cx, s.cy); ctxC.rotate(s.angle); ctxC.fillStyle='#5c4d24'; ctxC.beginPath(); ctxC.ellipse(0,0,Math.max(0.1,s.rx+4),Math.max(0.1,s.ry+4),0,0,Math.PI*2); ctxC.fill(); ctxC.fillStyle='#c2a86b'; ctxC.beginPath(); ctxC.ellipse(0,0,Math.max(0.1,s.rx),Math.max(0.1,s.ry),0,0,Math.PI*2); ctxC.fill(); ctxC.fillStyle='#a68f56'; for(let i=0;i<20;i++){ let a=Math.random()*Math.PI*2, r=Math.random(); ctxC.fillRect(Math.cos(a)*s.rx*r, Math.sin(a)*s.ry*r, 3,1.5); } ctxC.restore(); });
@@ -228,11 +270,35 @@ function drawCourse() {
   ctxC.fillStyle='#e84832'; ctxC.beginPath(); ctxC.moveTo(gx,gy-32); ctxC.lineTo(gx+18,gy-26); ctxC.lineTo(gx,gy-20); ctxC.fill();
   ctxC.fillStyle='#173614'; ctxC.beginPath(); ctxC.ellipse(hd.teeX, hd.teeY, 26, 14, 0, 0, Math.PI*2); ctxC.fill();
   ctxC.fillStyle='#ffffff'; ctxC.beginPath(); ctxC.arc(hd.teeX-12, hd.teeY, 2.5, 0, Math.PI*2); ctxC.fill(); ctxC.beginPath(); ctxC.arc(hd.teeX+12, hd.teeY, 2.5, 0, Math.PI*2); ctxC.fill();
-  hd.trees.forEach(t => { ctxC.fillStyle='#3a2a18'; ctxC.fillRect(t.x-2, t.y, 4, 12); ctxC.fillStyle='rgba(0,0,0,0.3)'; ctxC.beginPath(); ctxC.ellipse(t.x, t.y+10, Math.max(0.1,t.r*0.8), Math.max(0.1,t.r*0.4), 0, 0, Math.PI*2); ctxC.fill(); ctxC.fillStyle='#1e3d22'; ctxC.beginPath(); ctxC.arc(t.x, t.y, Math.max(0.1,t.r), 0, Math.PI*2); ctxC.fill(); ctxC.fillStyle='#27522c'; ctxC.beginPath(); ctxC.arc(t.x-t.r*0.2, t.y-t.r*0.2, Math.max(0.1,t.r*0.7), 0, Math.PI*2); ctxC.fill(); });
+  
+  // DIBUJADO DE LA SÚPER FLORA
+  hd.trees.forEach(t => { 
+      if(t.type === 'tree') {
+          ctxC.fillStyle='#3a2a18'; ctxC.fillRect(t.x-2, t.y, 4, 12); 
+          ctxC.fillStyle='rgba(0,0,0,0.3)'; ctxC.beginPath(); ctxC.ellipse(t.x, t.y+10, Math.max(0.1,t.r*0.8), Math.max(0.1,t.r*0.4), 0, 0, Math.PI*2); ctxC.fill(); 
+          ctxC.fillStyle='#1e3d22'; ctxC.beginPath(); ctxC.arc(t.x, t.y, Math.max(0.1,t.r), 0, Math.PI*2); ctxC.fill(); 
+          ctxC.fillStyle='#27522c'; ctxC.beginPath(); ctxC.arc(t.x-t.r*0.2, t.y-t.r*0.2, Math.max(0.1,t.r*0.7), 0, Math.PI*2); ctxC.fill(); 
+      } else if (t.type === 'pine') {
+          ctxC.fillStyle='rgba(0,0,0,0.3)'; ctxC.beginPath(); ctxC.ellipse(t.x, t.y+10, Math.max(0.1,t.r*0.7), Math.max(0.1,t.r*0.3), 0, 0, Math.PI*2); ctxC.fill();
+          ctxC.fillStyle='#152e18'; ctxC.beginPath(); ctxC.moveTo(t.x-t.r, t.y+6); ctxC.lineTo(t.x+t.r, t.y+6); ctxC.lineTo(t.x, t.y-t.r*1.5); ctxC.fill();
+          ctxC.fillStyle='#1e4022'; ctxC.beginPath(); ctxC.moveTo(t.x-t.r*0.5, t.y+6); ctxC.lineTo(t.x, t.y+6); ctxC.lineTo(t.x, t.y-t.r*1.5); ctxC.fill();
+      } else if (t.type === 'bush') {
+          ctxC.fillStyle='rgba(0,0,0,0.2)'; ctxC.beginPath(); ctxC.ellipse(t.x, t.y+5, Math.max(0.1,t.r), Math.max(0.1,t.r*0.4), 0, 0, Math.PI*2); ctxC.fill();
+          ctxC.fillStyle='#2a4724'; ctxC.beginPath(); ctxC.arc(t.x-t.r*0.3, t.y, Math.max(0.1,t.r*0.6), 0, Math.PI*2); ctxC.fill();
+          ctxC.beginPath(); ctxC.arc(t.x+t.r*0.4, t.y-t.r*0.2, Math.max(0.1,t.r*0.7), 0, Math.PI*2); ctxC.fill();
+          ctxC.beginPath(); ctxC.arc(t.x, t.y-t.r*0.4, Math.max(0.1,t.r*0.5), 0, Math.PI*2); ctxC.fill();
+          ctxC.fillStyle='#36592e'; ctxC.beginPath(); ctxC.arc(t.x+t.r*0.1, t.y-t.r*0.2, Math.max(0.1,t.r*0.4), 0, Math.PI*2); ctxC.fill();
+      } else if (t.type === 'flowers') {
+          ctxC.fillStyle='#2a4724'; ctxC.beginPath(); ctxC.arc(t.x, t.y, Math.max(0.1,t.r*0.5), 0, Math.PI*2); ctxC.fill();
+          const cols = ['#d4a832', '#e84832', '#a8d878', '#fff'];
+          ctxC.fillStyle=cols[Math.floor(t.x)%cols.length];
+          for(let j=0;j<3;j++){ ctxC.beginPath(); ctxC.arc(t.x+(Math.random()-0.5)*t.r*0.8, t.y+(Math.random()-0.5)*t.r*0.8, 1.5, 0, Math.PI*2); ctxC.fill(); }
+      }
+  });
 }
 
 function drawBall() {
-  ctxB.clearRect(0,0,cBall.width,cBall.height); const b=state.ball, r=b.airR||5;
+  ctxB.clearRect(0,0,CW,CH); const b=state.ball, r=b.airR||5;
   ctxB.fillStyle='rgba(0,0,0,0.4)'; ctxB.beginPath(); ctxB.ellipse(b.x, b.y+(r*0.5), r*0.8, r*0.25, 0,0,Math.PI*2); ctxB.fill();
   ctxB.fillStyle='#fff'; ctxB.beginPath(); ctxB.arc(b.x, b.y, Math.max(0.1, r), 0,Math.PI*2); ctxB.fill();
 }
@@ -246,7 +312,7 @@ function getLiePenalty(club, ball, terrain) {
 }
 
 function drawUI() {
-  ctxU.clearRect(0,0,cUI.width,cUI.height);
+  ctxU.clearRect(0,0,CW,CH);
   if(state.phase==='card_select' && state.target) {
     const dx=state.target.x-state.ball.x, dy=state.target.y-state.ball.y, ang=Math.atan2(dy,dx), tPx=Math.hypot(dx,dy);
     const aB=state.hand.find(c=>c.uid===state.selectedBall);
@@ -288,6 +354,9 @@ function initDeck() { state.drawPile=[]; state.hand=[]; state.money=0; for(const
 
 function drawCardsToHand() {
   if(!state.holeData) return;
+  const dToHolePx = Math.hypot(state.ball.x - state.holeData.holeX, state.ball.y - state.holeData.holeY);
+  if (dToHolePx <= state.holeData.greenR + 6) state.currentTerrain = 'green';
+
   const hP = (state.holeData.greenR/state.holeData.scale)>30, pT = hP?70:40, pD = hP?60:30;
   const sHP = state.currentTerrain==='green' || (['fairway','semirough','tee'].includes(state.currentTerrain) && state.distToHole<=pT);
   if(sHP && typeof AudioEngine!=='undefined') AudioEngine.playBGM('tension');
@@ -327,11 +396,12 @@ function showDeckBuilder() {
   CARDS_POOL.forEach(c => {
     state.deckConfig[c.baseId]=0; const div=document.createElement('div'); div.className='card'+(c.type==='ball'?' ball-card':'');
     div.innerHTML=`<div class="card-badge" style="display:none"></div><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div>${c.type==='club'?`<div class="card-dist">~${c.dist}m</div>`:`<div class="card-dist gold">${c.icon}</div>`}${c.desc?`<div class="card-tooltip">${c.desc}</div>`:''}`;
+    const b=div.querySelector('.card-badge');
     div.onclick=() => {
       document.querySelectorAll('.card').forEach(x=>x.classList.remove('show-tooltip')); if(c.desc){div.classList.add('show-tooltip'); setTimeout(()=>div.classList.remove('show-tooltip'),2500);}
       let n=state.deckConfig[c.baseId], isC=c.type==='club', l=isC?MAX_CLUBS:MAX_BALLS, t=isC?tC:tB;
       if(n===2){state.deckConfig[c.baseId]=0; isC?tC-=2:tB-=2;} else if(n===1){if(t<l){state.deckConfig[c.baseId]=2; isC?tC++:tB++;}else{state.deckConfig[c.baseId]=0; isC?tC--:tB--;}} else if(n===0&&t<l){state.deckConfig[c.baseId]=1; isC?tC++:tB++;}
-      let fin=state.deckConfig[c.baseId], b=div.querySelector('.card-badge');
+      let fin=state.deckConfig[c.baseId];
       if(fin>0){div.classList.add('selected'); b.style.display='flex'; b.textContent=`x${fin}`;}else{div.classList.remove('selected'); b.style.display='none';}
       $('deck-counter').textContent=`Palos: ${tC} / ${MAX_CLUBS} | Bolas: ${tB} / ${MAX_BALLS}`; $('deck-btn').disabled=!(tC===MAX_CLUBS&&tB===MAX_BALLS);
     }; $('deck-grid').appendChild(div);
@@ -351,14 +421,16 @@ function showSoftlockOverlay() {
 
 function grantReward(n, t, cb) {
     $('reward-title').textContent=t; $('reward-cards').innerHTML='';
-    for(let i=0;i<n;i++){ const c=cloneCard(CARDS_POOL[Math.floor(Math.random()*CARDS_POOL.length)]); state.drawPile.push(c); const d=document.createElement('div'); d.className='card'+(c.type==='ball'?' ball-card':''); d.innerHTML=`<span class="card-type">${c.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div>${c.type==='club'?`<div class="card-dist">~${c.dist}m</div>`:`<div class="card-dist gold">${c.icon}</div>`}`; $('reward-cards').appendChild(d); }
+    let pool = getTotalBalls() >= 6 ? CARDS_POOL.filter(c=>c.type==='club') : CARDS_POOL;
+    for(let i=0;i<n;i++){ const c=cloneCard(pool[Math.floor(Math.random()*pool.length)]); state.drawPile.push(c); const d=document.createElement('div'); d.className='card'+(c.type==='ball'?' ball-card':''); d.innerHTML=`<span class="card-type">${c.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div>${c.type==='club'?`<div class="card-dist">~${c.dist}m</div>`:`<div class="card-dist gold">${c.icon}</div>`}`; $('reward-cards').appendChild(d); }
     shuffle(state.drawPile); $('reward-overlay').style.display='flex'; $('reward-btn').onclick=()=>{ $('reward-overlay').style.display='none'; if(cb)cb(); };
 }
 
 function showPickReward(n, cb) {
-    $('pick-title').textContent=n>1?"¡Eagle o Mejor!":"¡Birdie!"; $('pick-sub').textContent=`Elige ${n} carta${n>1?'s':''} de las 3.`; $('pick-cards').innerHTML=''; let pL=n; $('pick-btn').disabled=true;
+    $('pick-title').textContent=n>1?"¡Eagle o Mejor!":"¡Birdie!"; $('pick-sub').textContent=`Elige ${n} carta${n>1?'s':''} de las 3. (Max 6 objetos)`; $('pick-cards').innerHTML=''; let pL=n; $('pick-btn').disabled=true;
+    let pool = getTotalBalls() >= 6 ? CARDS_POOL.filter(c=>c.type==='club') : CARDS_POOL;
     for(let i=0;i<3;i++){
-        const c=CARDS_POOL[Math.floor(Math.random()*CARDS_POOL.length)], d=document.createElement('div'); d.className='card face-down';
+        const c=pool[Math.floor(Math.random()*pool.length)], d=document.createElement('div'); d.className='card face-down';
         const bD=document.createElement('div'); bD.style.cssText='font-size:30px;'; bD.textContent='❓';
         const fD=document.createElement('div'); fD.style.cssText='display:none;flex-direction:column;align-items:center;'; fD.innerHTML=`<span class="card-type">${c.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div>${c.type==='club'?`<div class="card-dist">~${c.dist}m</div>`:`<div class="card-dist gold">${c.icon}</div>`}`;
         d.append(bD, fD); let f=false;
@@ -368,22 +440,71 @@ function showPickReward(n, cb) {
     $('pick-reward-overlay').style.display='flex'; $('pick-btn').onclick=()=>{ $('pick-reward-overlay').style.display='none'; shuffle(state.drawPile); if(cb)cb(); };
 }
 
-function showShop(cb) {
-    $('shop-money').textContent=state.money; $('shop-grid').innerHTML=''; let sI=new Set(), sC=[];
+function showShop(callback) {
+    const overlay = $('shop-overlay');
+    $('shop-money').textContent = state.money;
+    const grid = $('shop-grid');
+    grid.innerHTML = '<div style="width:100%;font-weight:bold;color:var(--text);margin-bottom:5px;text-align:center;">OFERTAS</div><div id="shop-buy-area" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%;"></div><div style="width:100%;font-weight:bold;color:var(--text);margin-top:15px;margin-bottom:5px;text-align:center;">VENDER TUS OBJETOS (+40🪙)</div><div id="shop-sell-area" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%;"></div>';
+    
+    const buyArea = $('shop-buy-area');
+    const sellArea = $('shop-sell-area');
+    const btnBuy = $('shop-buy-btn');
+    const costSpan = $('shop-cost');
+    const cardsSpan = $('shop-total-cards');
+
+    let selectedItems = new Set();
+    let shopCards = [];
+
     let nI=Math.floor(Math.random()*4), iP=shuffle([50,75,100]).slice(0,nI), bP=CARDS_POOL.filter(c=>c.type==='ball'), cP=CARDS_POOL.filter(c=>c.type==='club');
-    for(let i=0;i<nI;i++) sC.push({t:bP[Math.floor(Math.random()*bP.length)], p:iP[i]});
-    for(let i=0;i<12-nI;i++){ let t=cP[Math.floor(Math.random()*cP.length)]; sC.push({t, p:t.dist*2}); }
-    shuffle(sC); let cTC=state.drawPile.length+state.hand.length;
-    const upd=() => { let c=0; sI.forEach(x=>c+=x.p); $('shop-cost').textContent=c; $('shop-money').textContent=state.money; $('shop-total-cards').innerHTML=sI.size>0?`${cTC} <span style="color:var(--accent)">(+${sI.size})</span>`:cTC; $('shop-cost').style.color=c>state.money?'var(--danger)':!sI.size?'var(--text)':'var(--accent)'; $('shop-buy-btn').disabled=c>state.money||!sI.size; };
-    sC.forEach(x => {
+    for(let i=0;i<nI;i++) shopCards.push({ id:Math.random().toString(), t:bP[Math.floor(Math.random()*bP.length)], p:iP[i], oP:iP[i] });
+    for(let i=0;i<12-nI;i++){ let t=cP[Math.floor(Math.random()*cP.length)]; shopCards.push({ id:Math.random().toString(), t, p:t.dist*2, oP:t.dist*2 }); }
+    
+    let validClubs = shopCards.filter(x => x.t.type === 'club' && x.t.dist >= 100);
+    if(validClubs.length > 0) {
+        let dc = validClubs[Math.floor(Math.random()*validClubs.length)];
+        let desc = [0.2, 0.3, 0.4, 0.5][Math.floor(Math.random()*4)];
+        dc.p = Math.round(dc.p * (1-desc));
+        dc.discount = `-${desc*100}%`;
+    }
+    
+    shuffle(shopCards);
+
+    const upd = () => { 
+        let c=0; selectedItems.forEach(x=>c+=x.p); costSpan.textContent=c; $('shop-money').textContent=state.money; 
+        let cTC=state.drawPile.length+state.hand.length;
+        cardsSpan.innerHTML=selectedItems.size>0?`${cTC} <span style="color:var(--accent)">(+${selectedItems.size})</span>`:cTC; 
+        costSpan.style.color=c>state.money?'var(--danger)':!selectedItems.size?'var(--text)':'var(--accent)'; 
+        btnBuy.disabled=c>state.money||!selectedItems.size; 
+    };
+
+    function renderSellArea() {
+        sellArea.innerHTML = '';
+        let myBalls = [...state.hand.filter(c=>c.type==='ball'), ...state.drawPile.filter(c=>c.type==='ball')];
+        if(myBalls.length === 0) sellArea.innerHTML = '<span style="color:var(--text-muted);font-size:11px;">No tienes objetos para vender.</span>';
+        myBalls.forEach(b => {
+            const d = document.createElement('div'); d.className = 'card ball-card';
+            d.innerHTML = `<span class="card-type">Bola</span><div class="card-icon">${b.icon}</div><div class="card-name">${b.name}</div><div class="card-dist gold">${b.icon}</div>`;
+            d.onclick = () => {
+                state.money += 40; $('h-money').textContent=state.money;
+                const hIdx = state.hand.findIndex(x=>x.uid === b.uid);
+                if(hIdx > -1) state.hand.splice(hIdx, 1);
+                else { const pIdx = state.drawPile.findIndex(x=>x.uid === b.uid); if(pIdx > -1) state.drawPile.splice(pIdx, 1); }
+                renderSellArea(); upd(); showToast("+40 Monedas");
+            };
+            sellArea.appendChild(d);
+        });
+    }
+
+    shopCards.forEach(x => {
         const d=document.createElement('div'); d.className='card'+(x.t.type==='ball'?' ball-card':'');
-        d.innerHTML=`<div class="shop-price">${x.p} 🪙</div><span class="card-type">${x.t.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${x.t.icon}</div><div class="card-name">${x.t.name}</div>${x.t.type==='club'?`<div class="card-dist">~${x.t.dist}m</div>`:`<div class="card-dist gold">${x.t.icon}</div>`}${x.t.desc?`<div class="card-tooltip">${x.t.desc}</div>`:''}`;
-        let b=false; d.onclick=() => { document.querySelectorAll('.card').forEach(y=>y.classList.remove('show-tooltip')); if(x.t.desc){d.classList.add('show-tooltip');setTimeout(()=>d.classList.remove('show-tooltip'),2500);} if(!b&&state.money>=x.p){ if(sI.has(x)){sI.delete(x);d.classList.remove('shop-selected');}else{sI.add(x);d.classList.add('shop-selected');} upd(); }else if(!b&&state.money<x.p&&!sI.has(x)) showToast("No tienes suficientes monedas."); };
-        $('shop-grid').appendChild(d);
+        d.innerHTML=`<div class="shop-price">${x.p} 🪙</div><span class="card-type">${x.t.type==='club'?'Palo':'Bola'}</span><div class="card-icon">${x.t.icon}</div><div class="card-name">${x.t.name}</div>${x.t.type==='club'?`<div class="card-dist">~${x.t.dist}m</div>`:`<div class="card-dist gold">${x.t.icon}</div>`}${x.t.desc?`<div class="card-tooltip">${x.t.desc}</div>`:''}${x.discount?`<div style="position:absolute;bottom:-10px;background:var(--danger);color:#fff;font-size:9px;padding:2px 4px;border-radius:4px;z-index:5;">${x.discount} (<del>${x.oP}</del>)</div>`:''}`;
+        let b=false; d.onclick=() => { document.querySelectorAll('.card').forEach(y=>y.classList.remove('show-tooltip')); if(x.t.desc){d.classList.add('show-tooltip');setTimeout(()=>d.classList.remove('show-tooltip'),2500);} if(!b&&state.money>=x.p){ if(selectedItems.has(x)){selectedItems.delete(x);d.classList.remove('shop-selected');}else{selectedItems.add(x);d.classList.add('shop-selected');} upd(); }else if(!b&&state.money<x.p&&!selectedItems.has(x)) showToast("No tienes suficientes monedas."); };
+        buyArea.appendChild(d);
     });
-    upd(); $('shop-overlay').style.display='flex';
-    $('shop-buy-btn').onclick=() => { let c=0; sI.forEach(x=>{c+=x.p; state.drawPile.push(cloneCard(x.t));}); state.money-=c; $('h-money').textContent=state.money; $('shop-overlay').style.display='none'; shuffle(state.drawPile); if(cb)cb(); };
-    $('shop-exit-btn').onclick=() => { $('shop-overlay').style.display='none'; if(cb)cb(); };
+
+    renderSellArea(); upd(); overlay.style.display='flex';
+    $('shop-buy-btn').onclick=() => { let c=0; selectedItems.forEach(x=>{c+=x.p; state.drawPile.push(cloneCard(x.t));}); state.money-=c; $('h-money').textContent=state.money; $('shop-overlay').style.display='none'; shuffle(state.drawPile); if(callback)callback(); };
+    $('shop-exit-btn').onclick=() => { $('shop-overlay').style.display='none'; if(callback)callback(); };
 }
 
 let powerRaf=null, aimRaf=null, lastPowerTime=0, lastAimTime=0;
@@ -414,7 +535,7 @@ function executeShot() {
   const dx=state.target.x-state.ball.x, dy=state.target.y-state.ball.y, tPx=Math.hypot(dx,dy), dX=tPx===0?0:dx/tPx, dY=tPx===0?-1:dy/tPx, pX=-dY, pY=dX;
   let dev=0;
   if(!c.isPutt){
-    dev=((state.aimVal-0.5)*2)*sD*(0.40*(1+state.holeData.difficulty*0.5)*pDevMulti); if(b?.effect==='control') dev*=0.4;
+    dev=((state.aimVal-0.5)*2)*sD*(0.40*(1+state.holeData.difficulty*0.5)*pDevMulti);
     if(b?.effect!=='heavy'){ const wX=Math.cos(state.wind.dir)*state.wind.speed, wY=Math.sin(state.wind.dir)*state.wind.speed; dev+=(wX*pX+wY*pY)*(sD/100)*2.5; sD+=(wX*dX+wY*dY)*(sD/100)*2.0; sD=Math.max(5,sD); }
   }
   state.prevPos={x:state.ball.x, y:state.ball.y}; state.shotTerrain=state.currentTerrain;
@@ -425,7 +546,7 @@ function animateFlight(d, dev, c, b, dX, dY, pX, pY) {
   const hd=state.holeData, sX=state.ball.x, sY=state.ball.y, dPx=d*hd.scale, devPx=dev*hd.scale;
   const lX=sX+dX*dPx+pX*devPx, lY=sY+dY*dPx+pY*devPx, lT=getTerrain(lX,lY);
   let rM=d*0.20; if(lT==='green')rM*=0.8; else if(lT==='fairway')rM*=1.5; else if(lT==='semirough')rM*=0.6; else if(lT==='rough')rM*=0.3; else if(lT==='deeprough')rM*=0.15; else if(lT==='bunker'||lT==='agua')rM*=0.02;
-  if(b?.effect==='fallstop')rM=0; if(b?.effect==='Backspin')rM=-d*0.08;
+  if(b?.effect==='fallstop')rM=0;
   const rPx=rM*hd.scale, rL=Math.hypot(dX*dPx+pX*devPx, dY*dPx+pY*devPx)||1, fDX=(dX*dPx+pX*devPx)/rL, fDY=(dY*dPx+pY*devPx)/rL;
   const fX=lX+fDX*rPx, fY=lY+fDY*rPx, aD=800+d*1.5, rD=Math.max(200,Math.abs(rM)*30);
   let aP='air', pS=performance.now(); state.ballAnim={trace:[{x:sX,y:sY}]};
@@ -450,7 +571,7 @@ function animateFlight(d, dev, c, b, dX, dY, pX, pY) {
         state.ball.x+=fDX*4; state.ball.y+=fDY*4; if(Math.random()<0.2) addRipple(state.ball.x, state.ball.y);
         state.ballAnim.trace.push({x:state.ball.x, y:state.ball.y}); if(state.ballAnim.trace.length>40) state.ballAnim.trace.shift();
         let sT=getTerrain(state.ball.x, state.ball.y); if(sT!=='agua') { endShot(false,sT); return; }
-        if(state.ball.x<-200||state.ball.x>cCourse.width+200||state.ball.y<-200||state.ball.y>cCourse.height+200) { endShot(false,'ob'); return; }
+        if(state.ball.x<-200||state.ball.x>CW+200||state.ball.y<-200||state.ball.y>CH+200) { endShot(false,'ob'); return; }
     }
     drawBall(); drawUI(); drawVFX(ctxU); requestAnimationFrame(frame);
   }
@@ -497,6 +618,7 @@ function startHole(idx) {
 }
 
 function holeComplete(max) {
+  if(typeof AudioEngine !== 'undefined') AudioEngine.playBGM('menu'); 
   if(state.strokes>state.holeData.par+5) state.strokes=state.holeData.par+5;
   const d=state.strokes-state.holeData.par; state.totalScore+=d; state.scores.push({hole:state.hole+1, par:state.holeData.par, strokes:state.strokes, diff:d});
   $('h-score').textContent=state.totalScore===0?'E':(state.totalScore>0?'+'+state.totalScore:state.totalScore);
@@ -509,6 +631,7 @@ function holeComplete(max) {
   const oB=$('msg-btn'), nB=oB.cloneNode(true); oB.parentNode.replaceChild(nB,oB);
   nB.onclick=(ev)=>{
     ev.preventDefault(); $('msg-overlay').style.display='none'; discardPlayedCards();
+    if(state.strokes===1 && typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); 
     let q=[]; if(state.strokes===1) q.push((cb)=>grantReward(3,"¡Hole In One! 3 Cartas",cb)); else if(d<=-2) q.push((cb)=>showPickReward(2,cb)); else if(d===-1) q.push((cb)=>showPickReward(1,cb));
     if(state.hole===5||state.hole===11) q.push((cb)=>showShop(cb));
     function p(){ if(state.hole===8||state.hole===17) showScorecard(state.hole===8); else startHole(state.hole+1); }

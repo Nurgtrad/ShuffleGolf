@@ -61,7 +61,7 @@
 
   <div id="msg-overlay" class="overlay">
     <div id="logo-svg" style="width:100%; max-width:400px; margin: 0 auto 10px;">
-      <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 500 500">
+            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 500 500">
         <defs>
           <style>
             .cls-1 {
@@ -423,18 +423,18 @@
             </g>
           </g>
         </g>
-      </svg>  
+      </svg> 
     </div>
     <div class="msg-title" id="msg-title"></div>
     <div class="msg-sub" id="msg-sub">Golf Procedural · 18 Hoyos</div>
     <div class="warning" id="msg-warn" style="display:none">⚠️ ADVERTENCIA<br>Refrescar el navegador borrará tu progreso y tu colección de cartas para siempre.</div>
     <button class="msg-btn" id="msg-btn">Jugar</button>
-    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 0.8.0  -  2026</div>
+    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 0.9.0</div>
   </div>
 
   <div id="deck-overlay" class="overlay">
     <div class="msg-title" id="deck-title">Prepara tu Bolsa</div>
-    <div class="msg-sub" id="deck-sub">Selecciona exactamente 20 palos y 4 bolas. Las cartas gastadas NO volverán al mazo.</div>
+    <div class="msg-sub" id="deck-sub">Selecciona exactamente 20 palos y 4 bolas. (Límite máximo de 6 bolas durante la partida).</div>
     <div id="deck-counter" style="font-size:18px;">Palos: 0 / 20 | Bolas: 0 / 4</div>
     <div id="deck-grid"></div>
     <button class="msg-btn" id="deck-btn" disabled>Confirmar Mazo</button>
@@ -494,7 +494,6 @@
     <button class="msg-btn" onclick="location.reload()">Volver al Inicio</button>
   </div>
 </div>
-
 <script src="audio.js"></script>
 <script src="script.js"></script>
 </body>
