@@ -20,11 +20,20 @@ function drawCardsToHand() {
   const sHP = state.currentTerrain === 'green';
   if(sHP && typeof AudioEngine!=='undefined') AudioEngine.playBGM('tension');
   
+  // SOLUCIÓN: Calculamos si el Green es grande para dar putt de 60m, si no, de 30m.
+  let pD = (state.holeData.greenR / state.holeData.scale) > 30 ? 60 : 30;
+  
   const ePI = state.hand.findIndex(c=>c.isPutt); 
   if(!sHP && ePI !== -1) state.hand.splice(ePI,1); 
   
   while(state.hand.length < 5) { if(!state.drawPile.length) break; state.hand.push(state.drawPile.pop()); }
-  if(sHP && ePI === -1){ state.hand.push(cloneCard(PUTTER_CARD)); }
+  
+  if(sHP && ePI === -1){ 
+      let p = {baseId:'putt', name:'Putt', dist:pD, icon:'🕳', type:'club', isPutt:true};
+      state.hand.push(cloneCard(p)); 
+  } else if (sHP && ePI !== -1) {
+      state.hand[ePI].dist = pD;
+  }
   
   if(!state.hand.some(c=>c.type==='club') && !sHP && state.hand.length>0) return state.drawPile.some(c=>c.type==='club') ? showSoftlockOverlay() : $('gameover-overlay').style.display='flex';
   if(!state.hand.length && !state.drawPile.length) return $('gameover-overlay').style.display='flex';
@@ -127,7 +136,6 @@ function showPickReward(n, clubsOnly, cb) {
     $('pick-reward-overlay').style.display='flex'; $('pick-btn').onclick=()=>{ $('pick-reward-overlay').style.display='none'; shuffle(state.drawPile); if(cb)cb(); };
 }
 
-// NUEVA FUNCIÓN: PANTALLA EXCLUSIVA PARA MISIONES COMPLETADAS
 function showMissionReward(cb) {
     const par = state.holeData.par;
     $('mission-reward-overlay').style.display = 'flex';
@@ -135,7 +143,6 @@ function showMissionReward(cb) {
     $('mr-extra-rewards').innerHTML = '';
     $('mr-btn').disabled = true;
 
-    // Generar 3 Palos Boca Arriba (A elegir 1)
     let pool = [...CLUBS_POOL];
     let pL = 1; 
     for(let i=0;i<3;i++) {
@@ -153,7 +160,6 @@ function showMissionReward(cb) {
         $('mr-pick-cards').appendChild(d);
     }
 
-    // EXTRAS AUTOMÁTICOS (Según el PAR) se añaden visualmente abajo sin interactuar
     if (par >= 4) {
         let u = grantRandomUpgrade();
         const dU=document.createElement('div'); dU.className='card upgrade-card'; dU.style.pointerEvents='none';
