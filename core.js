@@ -15,41 +15,57 @@ function generateWind() { state.wind.speed=Math.random()*(4+state.holeData.diffi
 
 function generateMissions(par) {
   let count = par === 3 ? 1 : par === 4 ? 2 : 3;
-  let avail = [...M_TYPES]; if(par !== 3) avail = avail.filter(m=>m.id!=='hio');
+  let avail = [...M_TYPES]; 
+  
+  if(par !== 3) avail = avail.filter(m=>m.id!=='hio');
+  if(par === 3) avail = avail.filter(m=>m.id!=='drive'); 
   
   if(!state.holeData.prizeZones || state.holeData.prizeZones.length === 0) avail = avail.filter(m=>m.id!=='prize');
   if(!state.holeData.sandTraps || state.holeData.sandTraps.length === 0) avail = avail.filter(m=>m.id!=='bunker');
   
+  // Garantizar que la misión del palo se basa estrictamente en la mano
   let myHandClubs = state.hand.filter(c => c.type === 'club' && !c.isPutt);
-  let myClubNames = myHandClubs.map(c => c.name);
+  let myClubNames = [...new Set(myHandClubs.map(c => c.name))];
 
   if(myHandClubs.length === 0) {
       avail = avail.filter(m=>m.id!=='club' && m.id!=='drive');
   }
 
   state.missions = [];
-  let hasUpgMission = false; // SOLUCIÓN: Flag para evitar múltiples misiones de mejoras
+  let hasUpgMission = false;
+  let hasNoc200 = false;
+  let hasDrive = false;
   
   for(let i=0; i<count; i++) {
      let currentAvail = avail.filter(m => {
          if (hasUpgMission && ['u0','u1','u2'].includes(m.id)) return false;
+         if (hasNoc200 && m.id === 'drive') return false;
+         if (hasDrive && m.id === 'noc200') return false;
+         if (m.id === 'club' && myClubNames.length === 0) return false;
          return true;
      });
      
      if(currentAvail.length===0) break;
      
      let m = currentAvail.splice(Math.floor(Math.random()*currentAvail.length), 1)[0];
-     avail = avail.filter(x => x.id !== m.id); // Elimina de la pool global
+     avail = avail.filter(x => x.id !== m.id); 
      
      if(['u0','u1','u2'].includes(m.id)) hasUpgMission = true;
+     if(m.id === 'noc200') hasNoc200 = true;
+     if(m.id === 'drive') hasDrive = true;
      
      let val = null;
      if(m.id==='drive') {
-         let maxDist = Math.max(150, ...myHandClubs.map(c=>c.dist));
-         val = [maxDist - 30, maxDist - 15, maxDist][Math.floor(Math.random()*3)];
+         let maxHandDist = Math.max(100, ...myHandClubs.map(c=>c.dist));
+         let maxPossibleDrive = Math.min(maxHandDist, state.holeData.holeLength - 30);
+         val = [maxPossibleDrive - 20, maxPossibleDrive - 10, maxPossibleDrive][Math.floor(Math.random()*3)];
+         val = Math.max(50, Math.round(val / 5) * 5); 
      }
      
-     if(m.id==='club') val = myClubNames[Math.floor(Math.random()*myClubNames.length)];
+     if(m.id==='club') {
+         val = myClubNames[Math.floor(Math.random()*myClubNames.length)];
+     }
+     
      if(m.id==='score') { let s = par===3 ? ['Par','Birdie'] : par===4 ? ['Par','Birdie','Eagle'] : ['Par','Birdie','Eagle','Albatross']; val = s[Math.floor(Math.random()*s.length)]; }
      
      state.missions.push({ ...m, v: val, done: false });
@@ -57,8 +73,19 @@ function generateMissions(par) {
   renderMissions();
 }
 
+// SOLUCIÓN AL PANEL TAPANDO EL HOYO: Posicionamiento inteligente
 function renderMissions() {
   const p = $('missions-panel'); p.innerHTML='';
+  
+  if(state.holeData) {
+      const W = $('canvas-wrap').clientWidth;
+      if (state.holeData.holeX > W / 2) {
+          p.style.right = 'auto'; p.style.left = '15px'; p.style.alignItems = 'flex-start';
+      } else {
+          p.style.left = 'auto'; p.style.right = '15px'; p.style.alignItems = 'flex-end';
+      }
+  }
+
   state.missions.forEach(m => {
      const d=document.createElement('div'); d.className='mission-item'+(m.done?' done':'');
      d.innerHTML = (m.done?'✅ ':'⬜ ') + m.n(m.v); p.appendChild(d);
@@ -131,7 +158,7 @@ function animateFlight(d, dev, c, dX, dY, pX, pY) {
 
 function createMulliganUI() {
     let m = $('mulligan-overlay');
-    if (!m) { m = document.createElement('div'); m.id='mulligan-overlay'; m.className='overlay'; m.style.zIndex=70; m.innerHTML=`<div class="msg-title" style="font-size:28px;" id="mul-title">¡Oh no!</div><div class="msg-sub">Tienes un ⏪ Mulligan en la mano. ¿Quieres gastarlo para rebobinar el tiempo y recuperar tu tiro (y las cartas gastadas)?</div><div style="display:flex; gap:10px; margin-top:10px;"><button class="msg-btn" id="mul-btn-no" style="background:var(--surface2); color:var(--text);">Penalización</button><button class="msg-btn" id="mul-btn-yes">Usar Mulligan</button></div>`; $('game').appendChild(m); }
+    if (!m) { m = document.createElement('div'); m.id='mulligan-overlay'; m.className='overlay'; m.style.zIndex=70; m.innerHTML=`<div class="msg-title" style="font-size:28px;" id="mul-title">¡Oh no!</div><div class="msg-sub">Tienes un ⏪ Mulligan. ¿Quieres gastarlo para rebobinar el tiempo y recuperar tu tiro?</div><div style="display:flex; gap:10px; margin-top:10px;"><button class="msg-btn" id="mul-btn-no" style="background:var(--surface2); color:var(--text);">Penalización</button><button class="msg-btn" id="mul-btn-yes">Usar Mulligan</button></div>`; $('game').appendChild(m); }
     return m;
 }
 
@@ -171,7 +198,7 @@ function endShot(iHE, fT) {
   let delaySlot = 0;
   if (state.strokes === 1 && !['ob','agua'].includes(t)) {
       showDriveDistance(state.ball.x, state.ball.y, sD);
-      delaySlot = 2500; // SOLUCIÓN: Esperar a que el texto desaparezca para abrir el Slot
+      delaySlot = 2500; 
   }
 
   let pZHit = null; let pZSpins = 0; let baseCash = 0;
