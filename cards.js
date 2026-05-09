@@ -20,7 +20,6 @@ function drawCardsToHand() {
   const sHP = state.currentTerrain === 'green';
   if(sHP && typeof AudioEngine!=='undefined') AudioEngine.playBGM('tension');
   
-  // SOLUCIÓN: Calculamos si el Green es grande para dar putt de 60m, si no, de 30m.
   let pD = (state.holeData.greenR / state.holeData.scale) > 30 ? 60 : 30;
   
   const ePI = state.hand.findIndex(c=>c.isPutt); 
@@ -144,7 +143,7 @@ function showMissionReward(cb) {
     $('mr-btn').disabled = true;
 
     let pool = [...CLUBS_POOL];
-    let pL = 1; 
+    let pL = 1;
     for(let i=0;i<3;i++) {
         let c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
         const d=document.createElement('div'); d.className='card';
