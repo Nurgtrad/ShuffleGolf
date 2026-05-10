@@ -70,15 +70,14 @@
     <div class="msg-sub" id="msg-sub">Golf Procedural · 18 Hoyos</div>
     <div class="warning" id="msg-warn" style="display:none">⚠️ ADVERTENCIA<br>Refrescar el navegador borrará tu progreso y tu colección de cartas para siempre.</div>
     <button class="msg-btn" id="msg-btn">Jugar</button>
-    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 1.0</div>
+    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 1.1</div>
   </div>
 
   <div id="deck-overlay" class="overlay">
-    <div class="msg-title" id="deck-title">Prepara tus Mejoras</div>
-    <div class="msg-sub" id="deck-sub" style="color: var(--accent2); font-weight: bold;">Tu bolsa tiene estos palos. Elige tus mejoras.</div>
-    <div id="deck-counter" style="font-size:18px;">Mejoras: 0 / 2</div>
-    <div id="deck-grid"></div>
-    <button class="msg-btn" id="deck-btn" disabled>Confirmar Bolsa</button>
+    <div class="msg-title" id="deck-title" style="margin-bottom: 5px;">Preparación</div>
+    <div id="deck-grid" style="display: flex; flex-direction: column; width: 100%; align-items: center; max-height: 80vh; overflow-y: auto;"></div>
+    <div id="deck-counter" style="font-size:16px; margin-top: 10px;">Mejoras: 0 / 2</div>
+    <button class="msg-btn" id="deck-btn" disabled>Confirmar y Jugar</button>
   </div>
 
   <div id="score-overlay" class="overlay">
@@ -147,7 +146,7 @@
   </div>
 </div>
 <script src="audio.js"></script>
-<script src="data.js"></script>
+<script src="golfers.js"></script> <script src="data.js"></script>
 <script src="drawing.js"></script>
 <script src="cards.js"></script>
 <script src="core.js"></script>

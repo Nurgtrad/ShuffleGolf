@@ -56,49 +56,191 @@ function renderCards() {
   });
 }
 
+// ----------------------------------------------------
+// CONSTRUCTOR REESCRITO EN DOS PASOS (CLASE -> MEJORAS)
+// ----------------------------------------------------
 function showDeckBuilder() {
-  $('deck-overlay').style.display='flex'; state.upgradesConfig={}; let tU=0; $('deck-btn').disabled=true;
-  
-  $('deck-grid').innerHTML = `
-      <div style="width:100%; text-align:center; font-weight:bold; color:var(--text-muted); margin-bottom:5px; font-size:12px; letter-spacing:0.1em; text-transform:uppercase;">Tus Palos Base</div>
-      <div id="db-clubs" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; width:100%;"></div>
-      <div style="width:100%; border-bottom: 2px dashed var(--border); margin: 15px 0;"></div>
-      <div style="width:100%; text-align:center; font-weight:bold; color:var(--accent2); margin-bottom:5px; font-size:14px; letter-spacing:0.1em; text-transform:uppercase;">Elige tus Mejoras</div>
-      <div id="db-upgrades" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; width:100%;"></div>
-  `;
-
-  const clubsContainer = $('db-clubs');
-  const upgradesContainer = $('db-upgrades');
-
-  CLUBS_POOL.forEach(c => {
-    const div=document.createElement('div'); div.className='card'; 
-    div.style.opacity = '0.5'; div.style.transform = 'scale(0.85)'; div.style.pointerEvents = 'none'; div.style.margin = '-4px';
-    div.innerHTML=`<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${c.dist}m</div>`;
-    clubsContainer.appendChild(div);
-  });
-
-  UPGRADES_POOL.forEach(c => {
-    state.upgradesConfig[c.id]=0; 
-    const div=document.createElement('div'); div.className='card upgrade-card';
-    div.innerHTML=`<div class="card-badge" style="display:none"></div><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist" style="font-size:12px; color:var(--text)">3 Usos</div>${c.desc?`<div class="card-tooltip">${c.desc}</div>`:''}`;
+    const overlay = $('deck-overlay');
+    const grid = $('deck-grid');
+    const btn = $('deck-btn');
+    const counter = $('deck-counter');
     
-    div.onclick=() => {
-      document.querySelectorAll('.card').forEach(x=>x.classList.remove('show-tooltip')); 
-      if(c.desc){ div.classList.add('show-tooltip'); setTimeout(()=>div.classList.remove('show-tooltip'),2500); }
-      
-      let n = state.upgradesConfig[c.id];
-      if (n === 1) { state.upgradesConfig[c.id] = 0; tU--; } else if (n === 0 && tU < MAX_UPGRADES) { state.upgradesConfig[c.id] = 1; tU++; }
-      
-      const badge = div.querySelector('.card-badge');
-      if (state.upgradesConfig[c.id] > 0) { div.classList.add('selected'); badge.style.display='flex'; badge.textContent='✔'; } else { div.classList.remove('selected'); badge.style.display='none'; }
-      
-      $('deck-counter').textContent=`Mejoras: ${tU} / ${MAX_UPGRADES}`; 
-      $('deck-btn').disabled=!(tU===MAX_UPGRADES);
-    }; 
-    upgradesContainer.appendChild(div);
-  });
-  
-  $('deck-btn').onclick=()=>{ $('deck-overlay').style.display='none'; initDeck(); startHole(0); };
+    overlay.style.display = 'flex'; 
+    state.upgradesConfig = {}; 
+    let tU = 0; 
+    
+    // Asignamos el jugador 0 por defecto si existe
+    state.golfer = typeof GOLFERS !== 'undefined' ? GOLFERS[0] : null;
+
+    // --- PASO 1: SELECCIÓN DE JUGADOR ---
+    function renderStep1() {
+        grid.innerHTML = '';
+        counter.style.display = 'none'; // Ocultamos el contador de mejoras en este paso
+
+        const tGolfers = document.createElement('div');
+        tGolfers.className = 'db-title';
+        tGolfers.style.marginTop = '45px'; // Margen para que el tooltip no se corte
+        tGolfers.textContent = 'Selecciona tu Jugador';
+        grid.appendChild(tGolfers);
+
+        const cGolfers = document.createElement('div');
+        cGolfers.className = 'db-wrap';
+        grid.appendChild(cGolfers);
+
+        if (typeof GOLFERS !== 'undefined') {
+            GOLFERS.forEach((g, i) => {
+                const div = document.createElement('div');
+                // Marcamos como seleccionado al jugador actual en el state, o al primero por defecto
+                const isSelected = state.golfer ? state.golfer.id === g.id : i === 0;
+                div.className = 'golfer-card' + (isSelected ? ' selected' : '');
+                
+                let colorClass = i === 1 ? 'g-color-2' : (i === 2 ? 'g-color-3' : '');
+                let diffClass = g.difficulty === 'Fácil' ? 'diff-Facil' : (g.difficulty === 'Normal' ? 'diff-Normal' : 'diff-Dificil');
+                
+                div.innerHTML = `
+                    <div class="card-badge" style="display:${isSelected ? 'flex' : 'none'}; position:absolute; top:-6px; left:-6px; background:var(--accent2); color:#000; font-size:10px; font-weight:bold; width:20px; height:20px; border-radius:10px; align-items:center; justify-content:center; z-index:2;">✔</div>
+                    <div class="golfer-icon ${colorClass}">🏌️</div>
+                    <div style="font-size:14px; color:#fff; margin-bottom:8px; letter-spacing:0.12em; text-transform:uppercase; font-weight:bold;">${g.name}</div>
+                    <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+                        <div class="stat-row"><span>Recto</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.straight/5)*100}%"></div></div></div>
+                        <div class="stat-row"><span>Fuerza</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.power/5)*100}%"></div></div></div>
+                        <div class="stat-row"><span>Control</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.control/5)*100}%"></div></div></div>
+                    </div>
+                    <div class="golfer-diff ${diffClass}">${g.difficulty}</div>
+                    <div class="card-tooltip">${g.desc}</div>
+                `;
+                
+                div.onclick = () => {
+                    cGolfers.querySelectorAll('.golfer-card').forEach(x => { 
+                        x.classList.remove('selected'); 
+                        x.querySelector('.card-badge').style.display='none'; 
+                    });
+                    div.classList.add('selected'); 
+                    div.querySelector('.card-badge').style.display='flex';
+                    state.golfer = g;
+                    btn.disabled = false;
+                };
+                
+                div.addEventListener('mouseenter', () => { 
+                    cGolfers.querySelectorAll('.golfer-card').forEach(x=>x.classList.remove('show-tooltip')); 
+                    div.classList.add('show-tooltip'); 
+                });
+                div.addEventListener('mouseleave', () => div.classList.remove('show-tooltip'));
+                
+                cGolfers.appendChild(div);
+            });
+        }
+
+        // Configuramos el botón para pasar al paso 2
+        btn.textContent = 'Confirmar Jugador';
+        btn.disabled = !state.golfer;
+        btn.onclick = () => renderStep2();
+    }
+
+    // --- PASO 2: PALOS Y MEJORAS ---
+    function renderStep2() {
+        grid.innerHTML = '';
+        counter.style.display = 'block';
+        
+        const maxU = (typeof MAX_UPGRADES !== 'undefined') ? MAX_UPGRADES : 2;
+        counter.textContent = `Mejoras: ${tU} / ${maxU}`;
+
+        // 1. Palos Base
+        const tClubs = document.createElement('div');
+        tClubs.className = 'db-title muted';
+        tClubs.textContent = 'Tus Palos Base';
+        grid.appendChild(tClubs);
+
+        const cClubs = document.createElement('div');
+        cClubs.className = 'db-wrap';
+        grid.appendChild(cClubs);
+
+        if (typeof CLUBS_POOL !== 'undefined') {
+            CLUBS_POOL.forEach(c => {
+                const div = document.createElement('div'); 
+                div.className = 'card'; 
+                div.style.cssText = 'opacity:0.5; transform:scale(0.85); pointer-events:none; margin:-4px;';
+                div.innerHTML = `<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${c.dist}m</div>`;
+                cClubs.appendChild(div);
+            });
+        }
+
+        const sep = document.createElement('div');
+        sep.className = 'db-sep';
+        grid.appendChild(sep);
+
+        // 2. Mejoras
+        const tUpgrades = document.createElement('div');
+        tUpgrades.className = 'db-title';
+        tUpgrades.textContent = 'Elige tus Mejoras';
+        grid.appendChild(tUpgrades);
+
+        const cUpgrades = document.createElement('div');
+        cUpgrades.className = 'db-wrap';
+        grid.appendChild(cUpgrades);
+
+        const upgradesList = (typeof UPGRADES_POOL !== 'undefined' && UPGRADES_POOL.length > 0) ? UPGRADES_POOL : [
+            {id:'u_power', name:'Power', icon:'🔥', desc:'+25% distancia'},
+            {id:'u_heavy', name:'Heavy', icon:'🪨', desc:'Ignora viento'},
+            {id:'u_mulligan', name:'Mulligan', icon:'⏪', desc:'Rebobina'},
+            {id:'u_frog', name:'Rana', icon:'🐸', desc:'Rebota'},
+            {id:'u_tractor', name:'Oruga', icon:'🚜', desc:'Sin penalización'}
+        ];
+
+        upgradesList.forEach(c => {
+            if (state.upgradesConfig[c.id] === undefined) state.upgradesConfig[c.id] = 0; 
+            
+            const div = document.createElement('div'); 
+            div.className = 'card upgrade-card' + (state.upgradesConfig[c.id] > 0 ? ' selected' : '');
+            
+            div.innerHTML = `
+                <div class="card-badge" style="display:${state.upgradesConfig[c.id] > 0 ? 'flex' : 'none'}">✔</div>
+                <div class="card-icon">${c.icon}</div>
+                <div class="card-name">${c.name}</div>
+                <div class="card-dist" style="font-size:12px; color:var(--text)">3 Usos</div>
+                ${c.desc ? `<div class="card-tooltip">${c.desc}</div>` : ''}
+            `;
+            
+            div.onclick = () => {
+                cUpgrades.querySelectorAll('.card').forEach(x => x.classList.remove('show-tooltip')); 
+                if(c.desc) { 
+                    div.classList.add('show-tooltip'); 
+                    setTimeout(() => div.classList.remove('show-tooltip'), 2500); 
+                }
+                
+                const n = state.upgradesConfig[c.id];
+                
+                if (n === 1) { 
+                    state.upgradesConfig[c.id] = 0; tU--; 
+                } else if (n === 0 && tU < maxU) { 
+                    state.upgradesConfig[c.id] = 1; tU++; 
+                }
+                
+                const badge = div.querySelector('.card-badge');
+                if (state.upgradesConfig[c.id] > 0) { 
+                    div.classList.add('selected'); 
+                    badge.style.display='flex'; 
+                    badge.textContent='✔'; 
+                } else { 
+                    div.classList.remove('selected'); 
+                    badge.style.display='none'; 
+                }
+                
+                counter.textContent = `Mejoras: ${tU} / ${maxU}`; 
+                btn.disabled = (tU !== maxU);
+            }; 
+            
+            cUpgrades.appendChild(div);
+        });
+        
+        // Configuramos el botón para iniciar el juego
+        btn.textContent = 'Confirmar y Jugar';
+        btn.disabled = (tU !== maxU);
+        btn.onclick = () => { overlay.style.display='none'; initDeck(); startHole(0); };
+    }
+
+    // Iniciamos la vista mostrando el paso 1
+    renderStep1();
 }
 
 function showSoftlockOverlay() {

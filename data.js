@@ -21,10 +21,10 @@ const UPGRADES_POOL = [
 
 const GEMS_POOL = [
   {id:'g_dia', name:'Diamante', icon:'💎', price:500, chance:5, type:'gem'},
-  {id:'g_rub', name:'Rubí', icon:'👑', price:250, chance:15, type:'gem'},
-  {id:'g_esm', name:'Esmeralda', icon:'💍', price:100, chance:25, type:'gem'},
-  {id:'g_top', name:'Topacio', icon:'💰', price:50, chance:30, type:'gem'},
-  {id:'g_cua', name:'Cuarzo', icon:'🪙', price:25, chance:25, type:'gem'}
+  {id:'g_rub', name:'Rubí', icon:'💍', price:250, chance:15, type:'gem'},
+  {id:'g_esm', name:'Esmeralda', icon:'👑', price:100, chance:25, type:'gem'},
+  {id:'g_top', name:'Topacio', icon:'🪨', price:50, chance:30, type:'gem'},
+  {id:'g_cua', name:'Cuarzo', icon:'🔮', price:25, chance:25, type:'gem'}
 ];
 
 const PUTTER_CARD = {baseId:'putt', name:'Putt', dist:30, icon:'🕳', type:'club', isPutt:true};
@@ -32,6 +32,7 @@ const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,4,4,5,4,3,5,4];
 const MAX_CLUBS = 20, MAX_UPGRADES = 2, MAX_INVENTORY = 6;
 
 let state = {
+  golfer: null,
   upgradesConfig:{}, drawPile:[], hand:[], gems:[], activeUpgrades:[], missions:[],
   money:0, hole:0, totalScore:0, scores:[], holeData:null,
   ball:{x:0, y:0}, target:{x:0, y:0}, prevPos:{x:0, y:0}, currentTerrain:'tee', shotTerrain:'tee',
@@ -41,7 +42,6 @@ let state = {
   m_hz:false, m_upgs:0, m_c200:false 
 };
 
-// TEXTOS LIMPIOS Y LOGICA REPARADA
 const M_TYPES = [
   { id:'drive', n:(v)=>`Drive ${v}m+`, c:(st)=>st.strokes===1 && st.dist>=st.m.v },
   { id:'prize', n:()=>`Cae en Prize Zone`, c:(st)=>st.pzHit },
@@ -51,8 +51,8 @@ const M_TYPES = [
   { id:'score', n:(v)=>`Score: ${v}`, cH:(st)=>st.score===st.m.v },
   { id:'hio', n:()=>`Hoyo en 1`, cH:(st)=>st.strokes===1 },
   { id:'u0', n:()=>`Usa 0 Mejoras`, cH:(st)=>st.uUpg===0 },
-  { id:'u1', n:()=>`Usa 1 Mejora`, c:(st)=>st.uUpg>=1 }, // Check instantáneo (c)
-  { id:'u2', n:()=>`Usa 2 Mejoras`, c:(st)=>st.uUpg>=2 }, // Check instantáneo (c)
+  { id:'u1', n:()=>`Usa >=1 Mejora`, c:(st)=>st.uUpg>=1 }, 
+  { id:'u2', n:()=>`Usa >=2 Mejoras`, c:(st)=>st.uUpg>=2 }, 
   { id:'nohaz', n:()=>`Sin Agua/OB/Bunker`, cH:(st)=>!st.hz },
   { id:'noc200', n:()=>`Sin palos de 200m+`, cH:(st)=>!st.c200 }
 ];
@@ -62,15 +62,7 @@ function shuffle(array) { for(let i=array.length-1; i>0; i--){ const j=Math.floo
 function showToast(t) { const el = document.createElement('div'); el.textContent = t; el.style.cssText = 'position:absolute;top:25%;left:50%;transform:translate(-50%,-50%);background:var(--accent2);color:#000;padding:12px 24px;border-radius:30px;font-family:"DM Mono",monospace;font-size:12px;text-transform:uppercase;font-weight:bold;z-index:100;box-shadow:0 10px 20px rgba(0,0,0,0.5);pointer-events:none;animation:toastFade 2s forwards;text-align:center;'; $('game').appendChild(el); setTimeout(()=>el.remove(), 2000); }
 const getTotalClubsInDeck = () => state.hand.filter(c=>c.type==='club').length + state.drawPile.filter(c=>c.type==='club').length;
 function getRandomGem() { let r = Math.random() * 100, a = 0; for(let g of GEMS_POOL) { a += g.chance; if(r <= a) return g; } return GEMS_POOL[4]; }
-
-function grantRandomUpgrade() { 
-    let u = UPGRADES_POOL[Math.floor(Math.random()*UPGRADES_POOL.length)]; 
-    let ex = state.activeUpgrades.find(x=>x.id===u.id); 
-    if(ex) ex.uses++; 
-    else state.activeUpgrades.push({...u, uses:1, active:false}); 
-    if(typeof renderUpgrades === 'function') renderUpgrades(); 
-    return u; 
-}
+function grantRandomUpgrade() { let u = UPGRADES_POOL[Math.floor(Math.random()*UPGRADES_POOL.length)]; let ex = state.activeUpgrades.find(x=>x.id===u.id); if(ex) ex.uses++; else state.activeUpgrades.push({...u, uses:1, active:false}); if(typeof renderUpgrades === 'function') renderUpgrades(); return u; }
 
 function getLiePenalty(club, terrain) {
   let lF=Math.max(0,Math.min(1,((club?club.dist:150)-80)/160)), pD=0, pDM=1;

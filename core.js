@@ -1,10 +1,31 @@
 let powerRaf=null, aimRaf=null, lastPowerTime=0, lastAimTime=0;
+
+// INTEGRACIÓN DE VELOCIDAD DE BARRAS (CONTROL DEL GOLFISTA)
+function animatePower(ts) { 
+    const dt=Math.min((ts-lastPowerTime)/1000,0.05); lastPowerTime=ts; 
+    if(state.powerHeld){ 
+        let cMult = state.golfer ? state.golfer.getControlMultiplier() : 1;
+        state.powerVal += state.powerDir * dt * 2.0 * cMult; 
+        if(state.powerVal>=1){state.powerVal=1;state.powerDir=-1;} 
+        if(state.powerVal<=0){state.powerVal=0;state.powerDir=1;} 
+    } 
+    $('power-fill').style.width=(state.powerVal*100)+'%'; 
+    if(state.phase==='power') powerRaf=requestAnimationFrame(animatePower); 
+}
+
+function animateAim(ts){ 
+    const dt=Math.min((ts-lastAimTime)/1000,0.05); lastAimTime=ts; 
+    let cMult = state.golfer ? state.golfer.getControlMultiplier() : 1;
+    state.aimVal=Math.max(0,Math.min(1,state.aimVal+state.aimDir*dt*2.2*cMult)); 
+    if(state.aimVal>=1||state.aimVal<=0) state.aimDir*=-1; 
+    $('aim-cursor').style.left=(state.aimVal*100)+'%'; 
+    if(state.phase==='aim') aimRaf=requestAnimationFrame(animateAim); 
+}
+
 function startPowerMeter() { state.phase='power'; state.powerVal=0; state.powerDir=1; state.powerHeld=true; lastPowerTime=performance.now(); updateShootBtnUI(); animatePower(performance.now()); }
 function stopPower() { if(state.phase!=='power') return; state.powerHeld=false; cancelAnimationFrame(powerRaf); startAimMeter(); }
 function startAimMeter() { const c=state.hand.find(x=>x.uid===state.selectedClub); if(c&&c.isPutt){state.aimVal=0.5;executeShot();return;} state.phase='aim'; state.aimVal=0; state.aimDir=1; lastAimTime=performance.now(); updateShootBtnUI(); animateAim(performance.now()); }
 function stopAim() { if(state.phase!=='aim') return; cancelAnimationFrame(aimRaf); executeShot(); }
-function animatePower(ts) { const dt=Math.min((ts-lastPowerTime)/1000,0.05); lastPowerTime=ts; if(state.powerHeld){ state.powerVal+=state.powerDir*dt*2.0; if(state.powerVal>=1){state.powerVal=1;state.powerDir=-1;} if(state.powerVal<=0){state.powerVal=0;state.powerDir=1;} } $('power-fill').style.width=(state.powerVal*100)+'%'; if(state.phase==='power') powerRaf=requestAnimationFrame(animatePower); }
-function animateAim(ts){ const dt=Math.min((ts-lastAimTime)/1000,0.05); lastAimTime=ts; state.aimVal=Math.max(0,Math.min(1,state.aimVal+state.aimDir*dt*2.2)); if(state.aimVal>=1||state.aimVal<=0) state.aimDir*=-1; $('aim-cursor').style.left=(state.aimVal*100)+'%'; if(state.phase==='aim') aimRaf=requestAnimationFrame(animateAim); }
 
 const sBtn=$('shoot-btn');
 function onBtnDown(e){ if(sBtn.disabled)return; if(e&&e.type!=='keydown')e.preventDefault(); if(state.phase==='card_select'&&state.selectedClub){$('cards-row').style.pointerEvents='none';startPowerMeter();} else if(state.phase==='aim')stopAim(); }
@@ -34,11 +55,10 @@ function generateMissions(par) {
   let hasUpgMission = false;
   let hasNoc200 = false;
   let hasDrive = false;
-  let hasClub = false; // Control de colisión lógica
+  let hasClub = false;
   
   for(let i=0; i<count; i++) {
      let currentAvail = avail.filter(m => {
-         // Exclusiones mutuas estrictas para no pedir imposibles
          if (hasUpgMission && ['u0','u1','u2'].includes(m.id)) return false;
          if (hasNoc200 && (m.id === 'drive' || m.id === 'club')) return false; 
          if ((hasDrive || hasClub) && m.id === 'noc200') return false; 
@@ -80,10 +100,7 @@ function renderMissions() {
   
   if(state.holeData) {
       const W = $('canvas-wrap').clientWidth;
-      // Forzamos un top más bajo para que no choque con el viento en móviles. 
-      // ¡AQUÍ ES DONDE LO PUEDES CAMBIAR A MANO SI QUIERES!
       p.style.top = '130px'; 
-      
       if (state.holeData.holeX > W / 2) {
           p.style.right = 'auto'; p.style.left = '15px'; p.style.alignItems = 'flex-start';
       } else {
@@ -109,14 +126,32 @@ function updateReachDisplay() {
 
 function executeShot() {
   state.phase='flight'; state.strokes++; $('h-strokes').textContent=state.strokes; updateShootBtnUI(); if(typeof AudioEngine!=='undefined') AudioEngine.playSFX('hit');
+  
   const c=state.hand.find(x=>x.uid===state.selectedClub); const {pDist, pDevMulti} = getLiePenalty(c, state.currentTerrain);
+  
+  // INTEGRACIÓN FUERZA DEL GOLFISTA
+  let pMult = state.golfer ? state.golfer.getPowerMultiplier() : 1;
   let bD = state.activeUpgrades.some(u=>u.id==='u_power'&&u.active) ? c.dist*1.25 : c.dist;
+  bD = bD * pMult; 
+  
   let sD=Math.round(bD*(1-pDist)*Math.max(0.05,Math.pow(state.powerVal,1.6)));
   const dx=state.target.x-state.ball.x, dy=state.target.y-state.ball.y, tPx=Math.hypot(dx,dy), dX=tPx===0?0:dx/tPx, dY=tPx===0?-1:dy/tPx, pX=-dY, pY=dX;
+  
   let dev=0;
   if(!c.isPutt){
     let fDev = state.activeUpgrades.some(u=>u.id==='u_control'&&u.active) ? 0.4 : 1.0;
     dev=((state.aimVal-0.5)*2)*sD*(0.40*(1+state.holeData.difficulty*0.5)*pDevMulti)*fDev;
+    
+    // INTEGRACIÓN DESVÍO GOLFISTA (Slice / Fade)
+    if (state.golfer) {
+        let gDev = state.golfer.getDeviation();
+        if (gDev.type !== 'none') {
+            let baseDev = sD * gDev.value;
+            if (gDev.type === 'fade') dev += baseDev; 
+            if (gDev.type === 'slice') dev -= baseDev; 
+        }
+    }
+    
     if(!state.activeUpgrades.some(u=>u.id==='u_heavy'&&u.active)){ const wX=Math.cos(state.wind.dir)*state.wind.speed, wY=Math.sin(state.wind.dir)*state.wind.speed; dev+=(wX*pX+wY*pY)*(sD/100)*2.5; sD+=(wX*dX+wY*dY)*(sD/100)*2.0; sD=Math.max(5,sD); }
   }
   

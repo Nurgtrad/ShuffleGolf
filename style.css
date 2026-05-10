@@ -30,8 +30,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 #wind-flag-wrap { position:relative; width:30px; height:30px; margin-bottom:2px; }
 .wind-speed { font-size:10px; color:var(--accent2); font-weight:900; letter-spacing:0; text-align:center; line-height:1.2; }
 
-/* MISSIONS PANEL: Posicionamiento dinámico desde JS */
-#missions-panel { position: absolute; top: 95px; z-index: 20; display: flex; flex-direction: column; gap: 4px; pointer-events: none; transition: all 0.3s ease; }
+/* MISSIONS PANEL */
+#missions-panel { position: absolute; top: 110px; right: 15px; z-index: 20; display: flex; flex-direction: column; gap: 4px; pointer-events: none; align-items: flex-end; transition: all 0.3s ease; }
 .mission-item { font-size: 9px; color: var(--text); background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px); display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.3s; }
 .mission-item.done { color: var(--accent); text-decoration: line-through; border-color: var(--accent); }
 
@@ -43,12 +43,89 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .upgrade-uses { position: absolute; bottom: -6px; right: -6px; background: var(--text); color: var(--bg); font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
 .upgrade-btn.active .upgrade-uses { background: var(--accent2); }
 
-/* SLOT MACHINE ANIMATION 3 REELS */
+/* SLOT MACHINE ANIMATION */
 .reel { display:inline-block; width:45px; text-align:center; }
 @keyframes slotSpin { 0% { transform: translateY(-30px); opacity: 0; } 50% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }
 .slot-spinning .reel { animation: slotSpin 0.15s linear infinite; }
 .slot-spinning #slot-reel-2 { animation-delay: 0.05s; }
 .slot-spinning #slot-reel-3 { animation-delay: 0.1s; }
+
+
+/* -------------------------------------------------------- */
+/* CLASES ESTRUCTURALES DEL DECK BUILDER (NUEVO) */
+/* -------------------------------------------------------- */
+.db-title { width: 100%; text-align: center; font-weight: bold; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 20px; color: var(--accent2); }
+.db-title.muted { color: var(--text-muted); font-size: 12px; }
+.db-wrap { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; margin-bottom: 30px; }
+.db-sep { width: 100%; border-bottom: 2px dashed var(--border); margin-bottom: 30px; }
+
+/* -------------------------------------------------------- */
+/* GOLFERS CARDS ESTILOS (100% INDEPENDIENTES) */
+/* -------------------------------------------------------- */
+.golfer-card { 
+    width: 220px; 
+    height: auto; 
+    padding: 15px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+    align-items: center;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.1s;
+    user-select: none;
+}
+.golfer-card:hover { border-color: var(--accent); background: var(--surface); transform: translateY(-4px); }
+.golfer-card.selected { border-color: var(--accent); background: var(--surface); transform: translateY(-6px); box-shadow: 0 0 18px rgba(168,216,120,0.25); }
+
+.golfer-icon { font-size: 42px; text-align: center; line-height: 1; margin-top: 10px; margin-bottom: 5px; }
+.g-color-2 { filter: hue-rotate(120deg) brightness(1.2); }
+.g-color-3 { filter: hue-rotate(280deg) brightness(1.5); }
+.stat-row { display: flex; align-items: center; width: 100%; gap: 10px; }
+.stat-row span { width: 55px; text-align: left; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; flex-shrink: 0; display: inline-block; }
+.stat-bar-bg { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; min-width: 40px; }
+.stat-bar-fill { height: 100%; background: var(--accent); position: absolute; left: 0; top: 0; }
+.golfer-diff { font-size: 12px; text-align: center; font-weight: bold; margin-top: 8px; padding: 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.1em; width: 100%; background: rgba(0,0,0,0.3);}
+.diff-Facil { color: var(--accent); border: 1px solid rgba(168,216,120,0.3); }
+.diff-Normal { color: var(--accent2); border: 1px solid rgba(212,168,50,0.3); }
+.diff-Dificil { color: var(--danger); border: 1px solid rgba(232,72,50,0.3); }
+
+/* Tooltips Golfistas */
+.golfer-card .card-tooltip { position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: var(--accent2); color: #000; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; white-space: normal; width: 160px; text-align: center; pointer-events: none; opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.golfer-card .card-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: var(--accent2) transparent transparent transparent; }
+.golfer-card:hover .card-tooltip, .golfer-card.show-tooltip .card-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, -4px); }
+
+
+/* CARDS REGULARES (PALOS, GEMAS, MEJORAS) */
+.card{width:76px;height:108px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.1s;padding:8px 6px;text-align:center;user-select:none}
+.card:hover{border-color:var(--accent);background:var(--surface);transform:translateY(-4px)}
+.card.selected{border-color:var(--accent);background:var(--surface);transform:translateY(-6px);box-shadow:0 0 18px rgba(168,216,120,0.25)}
+.card.ball-card{border-color:rgba(212,168,50,0.5)}
+.card.gem-card{border-color:rgba(212,168,50,0.8); background: linear-gradient(135deg, var(--surface), #2a200a);}
+.card.upgrade-card{border-color:rgba(100,200,255,0.5); background: linear-gradient(135deg, var(--surface), #0a1a2a);}
+.card.upgrade-card.selected{border-color:#64c8ff; box-shadow:0 0 18px rgba(100,200,255,0.3);}
+.card.ball-card.selected{border-color:var(--accent2);box-shadow:0 0 18px rgba(212,168,50,0.25)}
+.card-icon{font-size:18px;margin-bottom:4px}
+.card-name{font-size:9px;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px;line-height:1.2}
+.card-dist{font-size:16px;font-family:'DM Serif Display',serif;color:var(--accent);line-height:1}
+.card-dist.gold{color:var(--accent2)}
+.card-sub{font-size:8px;color:var(--text-muted);margin-top:2px;line-height:1.2}
+.card-type{position:absolute;top:5px;right:6px;font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em}
+.card-badge{position:absolute;top:-6px;left:-6px;background:var(--accent2);color:#000;font-size:10px;font-weight:bold;width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;z-index:2}
+
+/* TOOLTIPS REGULARES */
+.card .card-tooltip { position: absolute; bottom: 115%; left: 50%; transform: translateX(-50%); background: var(--accent2); color: #000; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; white-space: normal; width: 140px; text-align: center; pointer-events: none; opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.card .card-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: var(--accent2) transparent transparent transparent; }
+.card:hover .card-tooltip, .card.show-tooltip .card-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, -4px); }
+.card.upgrade-card .card-tooltip { background: #64c8ff; }
+.card.upgrade-card .card-tooltip::after { border-color: #64c8ff transparent transparent transparent; }
+.card.to-return { border-color:var(--danger); background:rgba(232,72,50,0.1); transform:translateY(-4px); }
+.card.face-down { background: repeating-linear-gradient(45deg, var(--surface2), var(--surface2) 10px, var(--surface) 10px, var(--surface) 20px); border-color: var(--text-muted); }
+.shop-price { position:absolute; top:-10px; right:-10px; background:var(--accent2); color:#000; padding:4px 6px; border-radius:6px; font-size:10px; font-weight:bold; z-index:5; border:1px solid #000; }
+.card.shop-selected { border-color: var(--accent2); box-shadow: 0 0 15px rgba(212,168,50,0.4); transform: translateY(-4px); background:var(--surface); }
 
 /* CANVAS */
 #canvas-wrap{flex:1;min-height:0;position:relative;overflow:hidden; cursor:crosshair;}
@@ -68,33 +145,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #deck-pile{display:flex;flex-direction:column;align-items:center;justify-content:center;width:40px;height:60px;border:2px dashed var(--border);border-radius:6px;background:rgba(0,0,0,0.5)}
 .deck-count{font-size:14px;color:var(--text-muted);font-family:'DM Serif Display',serif}
 .deck-label{font-size:7px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px}
-
 #cards-row{display:flex;gap:6px;justify-content:center;}
-.card{width:76px;height:108px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.1s;padding:8px 6px;text-align:center;user-select:none}
-.card:hover{border-color:var(--accent);background:var(--surface);transform:translateY(-4px)}
-.card.selected{border-color:var(--accent);background:var(--surface);transform:translateY(-6px);box-shadow:0 0 18px rgba(168,216,120,0.25)}
-.card.ball-card{border-color:rgba(212,168,50,0.5)}
-.card.gem-card{border-color:rgba(212,168,50,0.8); background: linear-gradient(135deg, var(--surface), #2a200a);}
-.card.upgrade-card{border-color:rgba(100,200,255,0.5); background: linear-gradient(135deg, var(--surface), #0a1a2a);}
-.card.upgrade-card.selected{border-color:#64c8ff; box-shadow:0 0 18px rgba(100,200,255,0.3);}
-.card.ball-card.selected{border-color:var(--accent2);box-shadow:0 0 18px rgba(212,168,50,0.25)}
-.card-icon{font-size:18px;margin-bottom:4px}
-.card-name{font-size:9px;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px;line-height:1.2}
-.card-dist{font-size:16px;font-family:'DM Serif Display',serif;color:var(--accent);line-height:1}
-.card-dist.gold{color:var(--accent2)}
-.card-sub{font-size:8px;color:var(--text-muted);margin-top:2px;line-height:1.2}
-.card-type{position:absolute;top:5px;right:6px;font-size:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em}
-.card-badge{position:absolute;top:-6px;left:-6px;background:var(--accent2);color:#000;font-size:10px;font-weight:bold;width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;z-index:2}
-
-.card-tooltip { position: absolute; bottom: 115%; left: 50%; transform: translateX(-50%); background: var(--accent2); color: #000; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; white-space: normal; width: 140px; text-align: center; pointer-events: none; opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-.card-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: var(--accent2) transparent transparent transparent; }
-.card:hover .card-tooltip, .card.show-tooltip .card-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, -4px); }
-.card.upgrade-card .card-tooltip { background: #64c8ff; }
-.card.upgrade-card .card-tooltip::after { border-color: #64c8ff transparent transparent transparent; }
-.card.to-return { border-color:var(--danger); background:rgba(232,72,50,0.1); transform:translateY(-4px); }
-.card.face-down { background: repeating-linear-gradient(45deg, var(--surface2), var(--surface2) 10px, var(--surface) 10px, var(--surface) 20px); border-color: var(--text-muted); }
-.shop-price { position:absolute; top:-10px; right:-10px; background:var(--accent2); color:#000; padding:4px 6px; border-radius:6px; font-size:10px; font-weight:bold; z-index:5; border:1px solid #000; }
-.card.shop-selected { border-color: var(--accent2); box-shadow: 0 0 15px rgba(212,168,50,0.4); transform: translateY(-4px); background:var(--surface); }
 
 /* METERS */
 #bottom-actions { border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px; margin-top: 5px; }
@@ -132,8 +183,16 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 
 @keyframes toastFade { 0%{opacity:0;transform:translate(-50%,-40%)} 15%{opacity:1;transform:translate(-50%,-50%)} 85%{opacity:1;transform:translate(-50%,-50%)} 100%{opacity:0;transform:translate(-50%,-60%)} }
 
+/* REGLAS PARA MÓVILES */
 @media (max-width: 600px) {
   .card { width: 52px; height: 80px; padding: 4px; border-radius: 6px; }
+  
+  .golfer-card { width: 140px; padding: 10px; gap: 8px; }
+  .stat-row { gap: 6px; }
+  .stat-row span { width: 45px; font-size: 8px; }
+  .golfer-icon { font-size: 32px; margin-top: 5px; margin-bottom: 2px; }
+  .golfer-diff { font-size: 9px; padding: 4px; margin-top: 4px; }
+  
   .card-icon { font-size: 14px; margin-bottom: 2px; }
   .card-name { font-size: 8px; margin-bottom: 2px; }
   .card-dist { font-size: 13px; }
