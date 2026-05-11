@@ -53,7 +53,10 @@ function getFairwayPattern(ctx) {
 }
 
 function generateHole(holeIndex) {
-  const W = CW, H = CH, par = HOLE_PARS[holeIndex], diff = holeIndex / 17;
+  const W = CW, H = CH, par = HOLE_PARS[holeIndex] || 4;
+  const currentHCP = (state.handicaps && state.handicaps.length > holeIndex) ? state.handicaps[holeIndex] : 18;
+  const diff = Math.max(0, Math.min(1, (18 - currentHCP) / 17)); 
+
   const teeY = H * 0.88, vLen = H * 0.72, lDist = par===3 ? 150+Math.random()*30 : par===4 ? 330+Math.random()*70 : 490+Math.random()*60, scale = vLen / lDist;
   const teeX = W/2, holeX = W/2 + (Math.random()-0.5)*W*(0.2 + diff*0.4), holeY = teeY - vLen;
   const dev1 = (Math.random()-0.5)*W*(0.15+diff*0.25), dev2 = (Math.random()-0.5)*W*(0.15+diff*0.25);
@@ -61,14 +64,128 @@ function generateHole(holeIndex) {
   const fwW = Math.max(45, 90 - diff*35) + Math.random()*20;
   const fN = { l1: Math.random()*6.28, l2: Math.random()*6.28, r1: Math.random()*6.28, r2: Math.random()*6.28, srL1: Math.random()*6.28, srL2: Math.random()*6.28, srR1: Math.random()*6.28, srR2: Math.random()*6.28 };
   const isSplit = par >= 4 && (Math.random() < 0.2 + diff * 0.3); let gST = 0.45 + Math.random()*0.1, gET = gST + 0.12 + Math.random()*0.08;
-
-  let sT = []; for(let i=0;i<(par===3?1:2)+Math.floor(diff*4);i++) { const t = 0.15 + Math.random()*0.8; if (isSplit && t >= gST && t <= gET) continue; sT.push({ cx: bezierPoint(teeX,cp1x,cp2x,holeX,t)+(Math.random()-0.5)*(fwW+40), cy: bezierPoint(teeY,cp1y,cp2y,holeY,t)+(Math.random()-0.5)*20, rx: 15+Math.random()*15, ry: 10+Math.random()*10, angle: Math.random()*Math.PI }); }
-  
-  let riv = []; for(let i=0; i<(Math.random() < diff * 1.5 ? 1 : 0); i++) { let rt = 0.3 + Math.random()*0.4, cy = bezierPoint(teeY,cp1y,cp2y,holeY,rt), cx = bezierPoint(teeX,cp1x,cp2x,holeX,rt); riv.push({ cx, cy, rx1: cx - W/2 - Math.random()*50, ry1: cy + (Math.random()-0.5)*100, rx2: cx + W/2 + Math.random()*50, ry2: cy + (Math.random()-0.5)*100, width: 15+Math.random()*25 }); }
-  let lk = []; for(let i=0; i<Math.floor(diff*3); i++) { const t = 0.2+Math.random()*0.6; lk.push({ cx: bezierPoint(teeX,cp1x,cp2x,holeX,t)+((Math.random()>0.5?1:-1)*(fwW*0.6+10+Math.random()*30)), cy: bezierPoint(teeY,cp1y,cp2y,holeY,t)+(Math.random()-0.5)*20, rx: 20+Math.random()*25, ry: 15+Math.random()*15, angle: Math.random()*Math.PI }); }
-  
   const gR = Math.max(30, 50 - diff*15);
-  let tr = []; for(let i=0; i<Math.floor(600+diff*400); i++) { let tx, ty, val = false, att = 0; while(!val && att < 20) { att++; if (tr.length > 0 && Math.random() < 0.6) { const s = tr[Math.floor(Math.random()*tr.length)]; tx = s.x+(Math.random()-0.5)*40; ty = s.y+(Math.random()-0.5)*40; } else { tx = (Math.random()-0.2)*W*1.4; ty = (Math.random()-0.2)*H*1.4; } if (Math.hypot(tx-teeX, ty-teeY) < 45 || Math.hypot(tx-holeX, ty-holeY) < gR+25) continue; let minD = Infinity; for(let t=0; t<=1; t+=0.05) minD = Math.min(minD, Math.hypot(tx-bezierPoint(teeX,cp1x,cp2x,holeX,t), ty-bezierPoint(teeY,cp1y,cp2y,holeY,t))); if (minD > fwW/2 + 25 || Math.random() < 0.02) val = true; } if(val) { let type = 'tree', r = Math.random(); if(r<0.3) type='pine'; else if(r<0.6) type='bush'; else if(r<0.75) type='flowers'; tr.push({x: tx, y: ty, r: 8 + Math.random()*12, type: type}); } } tr.sort((a,b) => a.y - b.y);
+
+  let riv = []; 
+  for(let i=0; i<(Math.random() < diff * 1.5 ? 1 : 0); i++) { 
+      let rt = 0.2 + Math.random()*0.5; 
+      let cy_base = bezierPoint(teeY,cp1y,cp2y,holeY,rt);
+      let cx_base = bezierPoint(teeX,cp1x,cp2x,holeX,rt);
+      
+      let fdx = bezierTangent(teeX,cp1x,cp2x,holeX,rt);
+      let fdy = bezierTangent(teeY,cp1y,cp2y,holeY,rt);
+      let len = Math.hypot(fdx, fdy) || 1;
+      let nx = -fdy / len, ny = fdx / len;
+
+      let spread = W * 1.8; 
+      let startX = cx_base + nx * spread;
+      let startY = cy_base + ny * spread;
+      let endX = cx_base - nx * spread;
+      let endY = cy_base - ny * spread;
+      
+      let pts = [];
+      let steps = 60; 
+      let rNoise1 = Math.random() * 10;
+      let rNoise2 = Math.random() * 10;
+      let baseWidth = 15 + Math.random() * 12; 
+
+      let flx = endX - startX, fly = endY - startY;
+      let flen = Math.hypot(flx, fly);
+      flx /= flen; fly /= flen;
+      let perpX = -fly, perpY = flx;
+
+      let riverValid = true;
+      for(let j=0; j<=steps; j++) {
+          let st = j/steps;
+          let lx = startX + (endX - startX) * st;
+          let ly = startY + (endY - startY) * st;
+
+          let meander = Math.sin(st * Math.PI * 6 + rNoise1) * 80 + Math.sin(st * Math.PI * 9 + rNoise2) * 60;
+          let px = lx + perpX * meander;
+          let py = ly + perpY * meander;
+          let w = baseWidth + Math.sin(st * Math.PI * 5) * (baseWidth * 0.2);
+          
+          if (Math.hypot(px - holeX, py - holeY) < gR + 30) { riverValid = false; break; }
+
+          pts.push({x: px, y: py, w: w, nx: perpX, ny: perpY});
+      }
+      if(riverValid) riv.push({ pts }); 
+  }
+
+  let lk = []; 
+  let numLakes = Math.floor(diff*3);
+  let lakeAtt = 0;
+  while(lk.length < numLakes && lakeAtt < 50) {
+      lakeAtt++;
+      const t = 0.2+Math.random()*0.6; 
+      let cx = bezierPoint(teeX,cp1x,cp2x,holeX,t)+((Math.random()>0.5?1:-1)*(fwW*0.6+10+Math.random()*30));
+      let cy = bezierPoint(teeY,cp1y,cp2y,holeY,t)+(Math.random()-0.5)*20;
+      let rx = 20+Math.random()*25;
+      let ry = 15+Math.random()*15;
+      let angle = Math.random()*Math.PI;
+
+      if (Math.hypot(cx - holeX, cy - holeY) < gR + Math.max(rx, ry) + 20) continue;
+
+      let overlap = false;
+      for(let r of riv) { 
+          for(let p of r.pts) { 
+              if(Math.hypot(cx - p.x, cy - p.y) < Math.max(rx, ry) + p.w/2 + 15) { overlap = true; break; } 
+          }
+          if(overlap) break;
+      }
+      if(!overlap) lk.push({ cx, cy, rx, ry, angle });
+  }
+  
+  let sT = []; 
+  let numBunkers = (par===3?1:2)+Math.floor(diff*4);
+  let bunkerAtt = 0;
+  while(sT.length < numBunkers && bunkerAtt < 100) {
+      bunkerAtt++;
+      const t = 0.15 + Math.random()*0.8; 
+      if (isSplit && t >= gST && t <= gET) continue; 
+      let cx = bezierPoint(teeX,cp1x,cp2x,holeX,t)+(Math.random()-0.5)*(fwW+40);
+      let cy = bezierPoint(teeY,cp1y,cp2y,holeY,t)+(Math.random()-0.5)*20;
+      let rx = 15+Math.random()*15;
+      let ry = 10+Math.random()*10;
+      let angle = Math.random()*Math.PI;
+
+      if (Math.hypot(cx - holeX, cy - holeY) < gR + Math.max(rx, ry) + 15) continue;
+
+      let overlap = false;
+      for(let r of riv) { 
+          for(let p of r.pts) { if(Math.hypot(cx - p.x, cy - p.y) < Math.max(rx, ry) + p.w/2 + 10) { overlap = true; break; } }
+          if(overlap) break;
+      }
+      if(!overlap) {
+          for(let l of lk) { if(Math.hypot(cx - l.cx, cy - l.cy) < Math.max(rx, ry) + Math.max(l.rx, l.ry) + 10) { overlap = true; break; } }
+      }
+      if(!overlap) {
+          for(let s of sT) { if(Math.hypot(cx - s.cx, cy - s.cy) < Math.max(rx, ry) + Math.max(s.rx, s.ry) + 8) { overlap = true; break; } }
+      }
+
+      if(!overlap) sT.push({ cx, cy, rx, ry, angle });
+  }
+
+  let tr = []; 
+  for(let i=0; i<Math.floor(600+diff*400); i++) { 
+      let tx, ty, val = false, att = 0; 
+      while(!val && att < 20) { 
+          att++; 
+          if (tr.length > 0 && Math.random() < 0.6) { const s = tr[Math.floor(Math.random()*tr.length)]; tx = s.x+(Math.random()-0.5)*40; ty = s.y+(Math.random()-0.5)*40; } 
+          else { tx = (Math.random()-0.2)*W*1.4; ty = (Math.random()-0.2)*H*1.4; } 
+          if (Math.hypot(tx-teeX, ty-teeY) < 45 || Math.hypot(tx-holeX, ty-holeY) < gR+25) continue; 
+          let invalidSpot = false;
+          for(let l of lk) { if(Math.hypot(tx-l.cx, ty-l.cy) < Math.max(l.rx, l.ry)+5) invalidSpot = true; }
+          for(let r of riv) { for(let p of r.pts) { if(Math.hypot(tx-p.x, ty-p.y) < p.w/2 + 5) invalidSpot = true; } }
+          for(let s of sT) { if(Math.hypot(tx-s.cx, ty-s.cy) < Math.max(s.rx, s.ry)+5) invalidSpot = true; }
+          if(invalidSpot) continue;
+          let minD = Infinity; 
+          for(let t=0; t<=1; t+=0.05) minD = Math.min(minD, Math.hypot(tx-bezierPoint(teeX,cp1x,cp2x,holeX,t), ty-bezierPoint(teeY,cp1y,cp2y,holeY,t))); 
+          if (minD > fwW/2 + 25 || Math.random() < 0.02) val = true; 
+      } 
+      if(val) { let type = 'tree', r = Math.random(); if(r<0.3) type='pine'; else if(r<0.6) type='bush'; else if(r<0.75) type='flowers'; tr.push({x: tx, y: ty, r: 8 + Math.random()*12, type: type}); } 
+  } 
+  tr.sort((a,b) => a.y - b.y);
 
   let pZ = []; let nZ = Math.random() < 0.3 ? 2 : (Math.random() < 0.7 ? 1 : 0);
   for(let i=0; i<nZ; i++) {
@@ -76,9 +193,10 @@ function generateHole(holeIndex) {
       while(!val && att<40) {
           att++; let t = 0.2 + Math.random()*0.6; cx = bezierPoint(teeX,cp1x,cp2x,holeX,t) + (Math.random()-0.5)*(fwW*0.8); cy = bezierPoint(teeY,cp1y,cp2y,holeY,t) + (Math.random()-0.5)*20; val = true;
           for(let p of pZ) { if(Math.hypot(cx-p.cx, cy-p.cy) < 100 * scale) val = false; }
-          for(let l of lk) { const nx=cx-l.cx, ny=cy-l.cy, rdx=nx*Math.cos(-l.angle)-ny*Math.sin(-l.angle), rdy=nx*Math.sin(-l.angle)+ny*Math.cos(-l.angle); if((rdx*rdx)/((l.rx+20)*(l.rx+20))+(rdy*rdy)/((l.ry+20)*(l.ry+20))<=1) val = false; }
-          for(let r of riv) { if(Math.abs(cy - r.cy) < r.width + 40) val = false; }
-          for(let s of sT) { const nx=cx-s.cx, ny=cy-s.cy, rdx=nx*Math.cos(-s.angle)-ny*Math.sin(-s.angle), rdy=nx*Math.sin(-s.angle)+ny*Math.cos(-s.angle); if((rdx*rdx)/((s.rx+20)*(s.rx+20))+(rdy*rdy)/((s.ry+20)*(s.ry+20))<=1) val = false; }
+          for(let l of lk) { if(Math.hypot(cx-l.cx, cy-l.cy) < Math.max(l.rx, l.ry)+20) val = false; }
+          for(let r of riv) { for(let p of r.pts) { if(Math.hypot(cx - p.x, cy - p.y) < p.w/2 + 25) val = false; } }
+          for(let s of sT) { if(Math.hypot(cx-s.cx, cy-s.cy) < Math.max(s.rx, s.ry)+20) val = false; }
+          if (Math.hypot(cx - holeX, cy - holeY) < gR + 40) val = false;
       }
       if(val) pZ.push({ cx, cy, r1: 18, r2: 12, r3: 6 });
   }
@@ -87,7 +205,7 @@ function generateHole(holeIndex) {
 }
 
 function createTerrainPaths(hd) {
-    const paths = { fairway: new Path2D(), semirough: new Path2D(), rough: new Path2D(), ob: new Path2D() };
+    const paths = { fairway: new Path2D(), semirough: new Path2D(), rough: new Path2D(), ob: new Path2D(), water: new Path2D() };
     let segments = hd.isSplitHole ? [[0, hd.gapStartT], [hd.gapEndT, 1.0]] : [[0, 1.0]];
     hd.obFlanks = { left: [], right: [] }; 
 
@@ -127,6 +245,16 @@ function createTerrainPaths(hd) {
             paths[type].closePath();
         });
     }
+
+    hd.rivers.forEach(r => {
+        if(r.pts.length === 0) return;
+        paths.water.moveTo(r.pts[0].x + r.pts[0].nx * r.pts[0].w/2, r.pts[0].y + r.pts[0].ny * r.pts[0].w/2);
+        for(let i=1; i<r.pts.length; i++) { paths.water.lineTo(r.pts[i].x + r.pts[i].nx * r.pts[i].w/2, r.pts[i].y + r.pts[i].ny * r.pts[i].w/2); }
+        for(let i=r.pts.length-1; i>=0; i--) { paths.water.lineTo(r.pts[i].x - r.pts[i].nx * r.pts[i].w/2, r.pts[i].y - r.pts[i].ny * r.pts[i].w/2); }
+        paths.water.closePath();
+    });
+
+    hd.lakes.forEach(l => { paths.water.ellipse(l.cx, l.cy, Math.max(0.1, l.rx), Math.max(0.1, l.ry), l.angle, 0, Math.PI*2); paths.water.closePath(); });
     return paths;
 }
 
@@ -136,9 +264,7 @@ function getTerrain(x, y) {
     const px = x * DPR, py = y * DPR;
     if (Math.hypot(x - hd.holeX, y - hd.holeY) <= hd.greenR + 6) return 'green';
     for(let s of hd.sandTraps) { const nx=x-s.cx, ny=y-s.cy, rdx=nx*Math.cos(-s.angle)-ny*Math.sin(-s.angle), rdy=nx*Math.sin(-s.angle)+ny*Math.cos(-s.angle); if((rdx*rdx)/(s.rx*s.rx)+(rdy*rdy)/(s.ry*s.ry)<=1) return 'bunker'; }
-    for (let l of hd.lakes) { const nx=x-l.cx, ny=y-l.cy, rdx=nx*Math.cos(-l.angle)-ny*Math.sin(-l.angle), rdy=nx*Math.sin(-l.angle)+ny*Math.cos(-l.angle); if((rdx*rdx)/(l.rx*l.rx)+(rdy*rdy)/(l.ry*l.ry)<=1) return 'agua'; }
-    let inRiver = false; hd.rivers.forEach(r => { const p = new Path2D(); p.moveTo(r.rx1, r.ry1); p.quadraticCurveTo(r.cx, r.cy, r.rx2, r.ry2); ctxC.lineWidth = r.width; if(ctxC.isPointInStroke(p, px, py)) inRiver = true; });
-    if(inRiver) return 'agua';
+    if (state.paths.water && ctxC.isPointInPath(state.paths.water, px, py)) return 'agua';
     if (state.paths.fairway && ctxC.isPointInPath(state.paths.fairway, px, py)) return 'fairway';
     if (state.paths.semirough && ctxC.isPointInPath(state.paths.semirough, px, py)) return 'semirough';
     if (state.paths.rough && ctxC.isPointInPath(state.paths.rough, px, py)) return 'rough';
@@ -167,12 +293,50 @@ function drawCourse() {
   if(state.paths.semirough) { ctxC.fillStyle='#223d1b'; ctxC.fill(state.paths.semirough); }
   if(state.paths.fairway) { ctxC.fillStyle=getFairwayPattern(ctxC)||'#2b4d1f'; ctxC.fill(state.paths.fairway); }
   
-  ctxC.strokeStyle = '#1c3d5a'; ctxC.lineCap = 'round';
-  hd.rivers.forEach(r => { 
-      ctxC.lineWidth = r.width; ctxC.beginPath(); ctxC.moveTo(r.rx1, r.ry1); ctxC.quadraticCurveTo(r.cx, r.cy, r.rx2, r.ry2); ctxC.stroke(); 
-      ctxC.lineWidth = 1; ctxC.strokeStyle='#2b5f8c'; ctxC.beginPath(); ctxC.moveTo(r.cx-10, r.cy-5); ctxC.lineTo(r.cx+10, r.cy+5); ctxC.stroke(); ctxC.strokeStyle = '#1c3d5a'; 
+  if(state.paths.water) {
+      ctxC.fillStyle = '#1c3d5a';
+      ctxC.fill(state.paths.water);
+  }
+
+  // --- DETALLES DE AGUA: Corrientes de río y ondas de lagos ---
+  ctxC.save();
+  ctxC.strokeStyle = '#22527d'; // Color más claro para la corriente
+  ctxC.lineCap = 'round';
+  ctxC.lineWidth = 1.5;
+
+  hd.rivers.forEach(r => {
+      if(r.pts.length < 2) return;
+      const flowOffsets = [-0.25, 0, 0.25];
+      flowOffsets.forEach((off, idx) => {
+          ctxC.setLineDash([15 + idx * 5, 20]); // Dashes variables
+          ctxC.lineDashOffset = idx * 10;
+          ctxC.beginPath();
+          for(let i=0; i<r.pts.length; i++) {
+              let p = r.pts[i];
+              let px = p.x + p.nx * (p.w * off);
+              let py = p.y + p.ny * (p.w * off);
+              if(i === 0) ctxC.moveTo(px, py);
+              else ctxC.lineTo(px, py);
+          }
+          ctxC.stroke();
+      });
   });
-  hd.lakes.forEach(l => { ctxC.save(); ctxC.translate(l.cx, l.cy); ctxC.rotate(l.angle); ctxC.fillStyle='#1c3d5a'; ctxC.beginPath(); ctxC.ellipse(0,0,Math.max(0.1,l.rx),Math.max(0.1,l.ry),0,0,Math.PI*2); ctxC.fill(); ctxC.strokeStyle='#2b5f8c'; ctxC.lineWidth=1; ctxC.beginPath(); ctxC.moveTo(-l.rx*0.5,0); ctxC.lineTo(l.rx*0.5,0); ctxC.stroke(); ctxC.beginPath(); ctxC.moveTo(-l.rx*0.3,l.ry*0.4); ctxC.lineTo(l.rx*0.3,l.ry*0.4); ctxC.stroke(); ctxC.restore(); });
+
+  ctxC.setLineDash([12, 16]);
+  hd.lakes.forEach(l => {
+      ctxC.save();
+      ctxC.translate(l.cx, l.cy);
+      ctxC.rotate(l.angle);
+      ctxC.beginPath();
+      ctxC.ellipse(0, 0, Math.max(0.1, l.rx*0.6), Math.max(0.1, l.ry*0.6), 0, 0, Math.PI*2);
+      ctxC.stroke();
+      ctxC.beginPath();
+      ctxC.ellipse(0, 0, Math.max(0.1, l.rx*0.25), Math.max(0.1, l.ry*0.25), 0, 0, Math.PI*2);
+      ctxC.stroke();
+      ctxC.restore();
+  });
+  ctxC.restore();
+
   hd.sandTraps.forEach(s => { ctxC.save(); ctxC.translate(s.cx, s.cy); ctxC.rotate(s.angle); ctxC.fillStyle='#5c4d24'; ctxC.beginPath(); ctxC.ellipse(0,0,Math.max(0.1,s.rx+4),Math.max(0.1,s.ry+4),0,0,Math.PI*2); ctxC.fill(); ctxC.fillStyle='#c2a86b'; ctxC.beginPath(); ctxC.ellipse(0,0,Math.max(0.1,s.rx),Math.max(0.1,s.ry),0,0,Math.PI*2); ctxC.fill(); ctxC.fillStyle='#a68f56'; for(let i=0;i<20;i++){ let a=Math.random()*Math.PI*2, r=Math.random(); ctxC.fillRect(Math.cos(a)*s.rx*r, Math.sin(a)*s.ry*r, 3,1.5); } ctxC.restore(); });
   
   hd.prizeZones.forEach(pz => { 

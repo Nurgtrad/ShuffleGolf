@@ -28,8 +28,23 @@ function startAimMeter() { const c=state.hand.find(x=>x.uid===state.selectedClub
 function stopAim() { if(state.phase!=='aim') return; cancelAnimationFrame(aimRaf); executeShot(); }
 
 const sBtn=$('shoot-btn');
-function onBtnDown(e){ if(sBtn.disabled)return; if(e&&e.type!=='keydown')e.preventDefault(); if(state.phase==='card_select'&&state.selectedClub){$('cards-row').style.pointerEvents='none';startPowerMeter();} else if(state.phase==='aim')stopAim(); }
-function onBtnUp(e){ if(e&&e.type!=='keyup')e.preventDefault(); if(state.phase==='power')stopPower(); }
+function onBtnDown(e){ 
+    if(sBtn.disabled)return; 
+    if(e&&e.type!=='keydown')e.preventDefault(); 
+    
+    // SISTEMA DE 3 CLICS
+    if(state.phase==='card_select'&&state.selectedClub){
+        $('cards-row').style.pointerEvents='none';
+        startPowerMeter(); // Clic 1: Inicia
+    } else if(state.phase==='power'){
+        stopPower();       // Clic 2: Para fuerza, pasa a dirección
+    } else if(state.phase==='aim'){
+        stopAim();         // Clic 3: Para dirección, ejecuta el tiro
+    } 
+}
+// El evento de "soltar" el botón ya no hace nada con este nuevo sistema
+function onBtnUp(e){ if(e&&e.type!=='keyup')e.preventDefault(); }
+
 sBtn.addEventListener('touchstart',onBtnDown,{passive:false}); sBtn.addEventListener('touchend',onBtnUp,{passive:false}); sBtn.addEventListener('mousedown',onBtnDown); window.addEventListener('mouseup',onBtnUp); window.addEventListener('keydown',(e)=>{if(e.code==='Space'&&!e.repeat)onBtnDown(e);}); window.addEventListener('keyup',(e)=>{if(e.code==='Space')onBtnUp(e);});
 
 function generateWind() { state.wind.speed=Math.random()*(4+state.holeData.difficulty*12); state.wind.dir=Math.random()*Math.PI*2; $('wind-text').innerHTML=state.wind.speed.toFixed(1)+'<br>m/s'; $('wind-arrow').style.transform=`rotate(${state.wind.dir}rad)`; $('flag-shape').setAttribute('points', `20,6 ${34+Math.cos(state.wind.dir)*Math.min(state.wind.speed/15,1)*8},${12+Math.min(state.wind.speed/15,1)*2} 20,18`); }
@@ -51,17 +66,27 @@ function generateMissions(par) {
       avail = avail.filter(m=>m.id!=='club' && m.id!=='drive');
   }
 
+  let totalUpgUses = (state.activeUpgrades || []).reduce((sum, u) => sum + u.uses, 0);
+  if (totalUpgUses < 1) avail = avail.filter(m => m.id !== 'u1');
+  if (totalUpgUses < 2) avail = avail.filter(m => m.id !== 'u2');
+
   state.missions = [];
   let hasUpgMission = false;
   let hasNoc200 = false;
   let hasDrive = false;
   let hasClub = false;
+  let hasPrize = false;
+  let hasScore = false;
   
   for(let i=0; i<count; i++) {
      let currentAvail = avail.filter(m => {
          if (hasUpgMission && ['u0','u1','u2'].includes(m.id)) return false;
          if (hasNoc200 && (m.id === 'drive' || m.id === 'club')) return false; 
          if ((hasDrive || hasClub) && m.id === 'noc200') return false; 
+         if (hasNoc200 && m.id === 'score') return false;
+         if (hasScore && m.id === 'noc200') return false;
+         if (hasDrive && m.id === 'prize') return false;
+         if (hasPrize && m.id === 'drive') return false;
          if (m.id === 'club' && myClubNames.length === 0) return false;
          return true;
      });
@@ -75,6 +100,8 @@ function generateMissions(par) {
      if(m.id === 'noc200') hasNoc200 = true;
      if(m.id === 'drive') hasDrive = true;
      if(m.id === 'club') hasClub = true;
+     if(m.id === 'prize') hasPrize = true;
+     if(m.id === 'score') hasScore = true;
      
      let val = null;
      if(m.id==='drive') {
@@ -88,7 +115,10 @@ function generateMissions(par) {
          val = myClubNames[Math.floor(Math.random()*myClubNames.length)];
      }
      
-     if(m.id==='score') { let s = par===3 ? ['Par','Birdie'] : par===4 ? ['Par','Birdie','Eagle'] : ['Par','Birdie','Eagle','Albatross']; val = s[Math.floor(Math.random()*s.length)]; }
+     if(m.id==='score') { 
+         let s = par===3 ? ['Par','Birdie'] : par===4 ? ['Par','Birdie','Eagle'] : ['Par','Birdie','Eagle']; 
+         val = s[Math.floor(Math.random()*s.length)]; 
+     }
      
      state.missions.push({ ...m, v: val, done: false });
   }
@@ -129,7 +159,6 @@ function executeShot() {
   
   const c=state.hand.find(x=>x.uid===state.selectedClub); const {pDist, pDevMulti} = getLiePenalty(c, state.currentTerrain);
   
-  // INTEGRACIÓN FUERZA DEL GOLFISTA
   let pMult = state.golfer ? state.golfer.getPowerMultiplier() : 1;
   let bD = state.activeUpgrades.some(u=>u.id==='u_power'&&u.active) ? c.dist*1.25 : c.dist;
   bD = bD * pMult; 
@@ -142,7 +171,6 @@ function executeShot() {
     let fDev = state.activeUpgrades.some(u=>u.id==='u_control'&&u.active) ? 0.4 : 1.0;
     dev=((state.aimVal-0.5)*2)*sD*(0.40*(1+state.holeData.difficulty*0.5)*pDevMulti)*fDev;
     
-    // INTEGRACIÓN DESVÍO GOLFISTA (Slice / Fade)
     if (state.golfer) {
         let gDev = state.golfer.getDeviation();
         if (gDev.type !== 'none') {
@@ -242,11 +270,14 @@ function endShot(iHE, fT) {
   }
 
   let pZHit = null; let pZSpins = 0; let baseCash = 0;
-  for(let pz of hd.prizeZones) {
+  let pZIndex = -1;
+
+  for(let i = 0; i < hd.prizeZones.length; i++) {
+      let pz = hd.prizeZones[i];
       let d = Math.hypot(state.ball.x - pz.cx, state.ball.y - pz.cy);
-      if(d <= pz.r3 + 5) { pZHit = pz; pZSpins = 3; baseCash = 150; break; }
-      else if(d <= pz.r2 + 5) { pZHit = pz; pZSpins = 2; baseCash = 100; break; }
-      else if(d <= pz.r1 + 5) { pZHit = pz; pZSpins = 1; baseCash = 50; break; }
+      if(d <= pz.r3 + 5) { pZHit = pz; pZSpins = 3; baseCash = 150; pZIndex = i; break; }
+      else if(d <= pz.r2 + 5) { pZHit = pz; pZSpins = 2; baseCash = 100; pZIndex = i; break; }
+      else if(d <= pz.r1 + 5) { pZHit = pz; pZSpins = 1; baseCash = 50; pZIndex = i; break; }
   }
 
   state.missions.forEach(m => {
@@ -258,7 +289,17 @@ function endShot(iHE, fT) {
   const proceed = () => { if(iHE||state.distToHole<=3.0) setTimeout(()=>holeComplete(false),600); else if(state.strokes>=hd.par+5) setTimeout(()=>holeComplete(true),600); else finishTurn(t); };
   
   if(pZHit) {
-      setTimeout(() => { showSlotMachine(pZSpins, baseCash, proceed); }, delaySlot);
+      setTimeout(() => { 
+          showSlotMachine(pZSpins, baseCash, () => {
+              if (pZIndex !== -1) {
+                  hd.prizeZones.splice(pZIndex, 1);
+                  drawCourse();
+                  drawBall();
+                  drawUI();
+              }
+              proceed();
+          }); 
+      }, delaySlot);
   } else { 
       proceed(); 
   }
@@ -292,7 +333,11 @@ function startHole(idx) {
   state.hole=idx; state.strokes=0; state.selectedClub=null; state.selectedBall=null; state.itemLocked=false; state.phase='card_select'; state.currentTerrain='tee'; state.shotTerrain='tee';
   state.m_hz=false; state.m_upgs=0; state.m_c200=false;
   resizeCanvases(); state.holeData=generateHole(idx); state.ball={x:state.holeData.teeX, y:state.holeData.teeY, airR:5}; state.target={x:state.holeData.holeX, y:state.holeData.holeY}; state.distToHole=state.holeData.holeLength;
-  $('h-hole').textContent=state.hole+1; $('h-par').textContent=state.holeData.par; $('h-strokes').textContent=0; $('d-hole').textContent=Math.round(state.distToHole)+' m'; $('d-pos').textContent='Tee';
+  
+  const hcpText = (state.handicaps && state.handicaps.length > state.hole) ? state.handicaps[state.hole] : '-';
+  $('h-hole').innerHTML = `${state.hole+1}<div style="font-size:10px; color:var(--text-muted); font-family:'DM Mono',monospace; margin-top:-2px;">HCP ${hcpText}</div>`; 
+  
+  $('h-par').textContent=state.holeData.par; $('h-strokes').textContent=0; $('d-hole').textContent=Math.round(state.distToHole)+' m'; $('d-pos').textContent='Tee';
   
   generateWind(); 
   drawCardsToHand(); 
@@ -315,7 +360,6 @@ function holeComplete(max) {
   state.missions.forEach(m => { if(!m.done && m.cH && m.cH({ strokes:state.strokes, score:sN, uUpg:state.m_upgs, hz:state.m_hz, c200:state.m_c200, m:m })) m.done = true; }); renderMissions();
   let mDone = state.missions.filter(m=>m.done).length;
   let mTotal = state.missions.length;
-  let allMissionsDone = mTotal > 0 && mDone === mTotal;
 
   const m=$('msg-overlay'); $('logo-svg').style.display='none';
   
@@ -326,7 +370,7 @@ function holeComplete(max) {
   if (mTotal > 0) resText += `<br><br><span style="color:var(--accent2); font-size:15px; font-weight:bold;">Misiones completadas: ${mDone} / ${mTotal}</span>`;
   $('msg-sub').innerHTML = resText;
 
-  $('msg-btn').textContent = allMissionsDone ? 'Recoger Recompensa Misión' : 'Continuar a Recompensas';
+  $('msg-btn').textContent = mDone > 0 ? 'Recoger Recompensa Misión' : 'Continuar a Recompensas';
   m.style.display='flex';
   
   const oB=$('msg-btn'), nB=oB.cloneNode(true); oB.parentNode.replaceChild(nB,oB);
@@ -335,7 +379,8 @@ function holeComplete(max) {
     if(state.strokes===1 && typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); 
     
     let q=[]; 
-    if(allMissionsDone) q.push((cb) => showMissionReward(cb));
+    if(mDone > 0) q.push((cb) => showMissionReward(mDone, cb));
+
     if(state.strokes===1) q.push((cb)=>grantReward(3,"¡Hole In One! 3 Cartas",cb)); else if(d<=-2) q.push((cb)=>showPickReward(2,false,cb)); else if(d===-1) q.push((cb)=>showPickReward(1,false,cb));
     if(state.hole===5||state.hole===11) q.push((cb)=>showShop(cb));
     
@@ -361,3 +406,21 @@ window.addEventListener('load', ()=>{
   $('msg-btn').onclick=()=>{ $('msg-overlay').style.display='none'; $('msg-warn').style.display='none'; $('version-text').style.display='none'; if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); showDeckBuilder(); }
   $('msg-overlay').style.display='flex';
 });
+
+function resetMetersUI() { $('power-fill').style.width='0%'; $('aim-cursor').style.left='50%'; }
+function updateShootBtnUI() { 
+    const b=$('shoot-btn'); 
+    if(state.phase==='card_select'){
+        b.disabled=!state.selectedClub;
+        b.textContent=state.selectedClub?'INICIAR':'GOLPEAR';
+    }else if(state.phase==='power'){
+        b.disabled=false;
+        b.textContent='PARAR';
+    }else if(state.phase==='aim'){
+        b.disabled=false;
+        b.textContent='GOLPEAR';
+    }else{
+        b.disabled=true;
+        b.textContent='...';
+    } 
+}

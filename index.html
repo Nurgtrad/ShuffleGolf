@@ -57,8 +57,15 @@
     <div id="bottom-actions">
       <div id="meters-row">
         <div id="meter-power"><div class="meter-label">Fuerza</div><div class="meter-track" id="power-track"><div class="meter-fill" id="power-fill" style="width:0%"></div></div><div class="meter-action">Botón o Espacio</div></div>
-        <div id="meter-aim"><div class="meter-label">Dirección</div><div class="meter-track" id="aim-track"><div style="position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:2px;background:var(--border);"></div><div id="aim-cursor"></div></div><div class="meter-action">Centra para precisión</div></div>
-        <button id="shoot-btn" disabled>GOLPEAR</button>
+        <div id="meter-aim">
+          <div class="meter-label">Dirección</div>
+          <div class="meter-track" id="aim-track">
+              <div style="position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:2px;background:var(--text-muted);opacity:0.6;"></div>
+              <div id="aim-cursor"></div>
+          </div>
+          <div class="meter-action">Centra para precisión</div>
+      </div>
+      <button id="shoot-btn" disabled>GOLPEAR</button>
       </div>
     </div>
   </div>
@@ -70,7 +77,7 @@
     <div class="msg-sub" id="msg-sub">Golf Procedural · 18 Hoyos</div>
     <div class="warning" id="msg-warn" style="display:none">⚠️ ADVERTENCIA<br>Refrescar el navegador borrará tu progreso y tu colección de cartas para siempre.</div>
     <button class="msg-btn" id="msg-btn">Jugar</button>
-    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 1.1</div>
+    <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 1.2</div>
   </div>
 
   <div id="deck-overlay" class="overlay">

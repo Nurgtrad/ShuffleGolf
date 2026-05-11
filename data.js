@@ -34,7 +34,7 @@ const MAX_CLUBS = 20, MAX_UPGRADES = 2, MAX_INVENTORY = 6;
 let state = {
   golfer: null,
   upgradesConfig:{}, drawPile:[], hand:[], gems:[], activeUpgrades:[], missions:[],
-  money:0, hole:0, totalScore:0, scores:[], holeData:null,
+  money:0, hole:0, totalScore:0, scores:[], holeData:null, handicaps:[],
   ball:{x:0, y:0}, target:{x:0, y:0}, prevPos:{x:0, y:0}, currentTerrain:'tee', shotTerrain:'tee',
   strokes:0, phase:'card_select', selectedClub:null, currentUpgradeSelected:null,
   wind:{speed:0, dir:0}, powerVal:0, powerDir:1, powerHeld:false, aimVal:0.5, aimDir:1,
@@ -51,8 +51,8 @@ const M_TYPES = [
   { id:'score', n:(v)=>`Score: ${v}`, cH:(st)=>st.score===st.m.v },
   { id:'hio', n:()=>`Hoyo en 1`, cH:(st)=>st.strokes===1 },
   { id:'u0', n:()=>`Usa 0 Mejoras`, cH:(st)=>st.uUpg===0 },
-  { id:'u1', n:()=>`Usa >=1 Mejora`, c:(st)=>st.uUpg>=1 }, 
-  { id:'u2', n:()=>`Usa >=2 Mejoras`, c:(st)=>st.uUpg>=2 }, 
+  { id:'u1', n:()=>`Usa 1 o más mejoras`, c:(st)=>st.uUpg>=1 }, 
+  { id:'u2', n:()=>`Usa 2 o más mejoras`, c:(st)=>st.uUpg>=2 }, 
   { id:'nohaz', n:()=>`Sin Agua/OB/Bunker`, cH:(st)=>!st.hz },
   { id:'noc200', n:()=>`Sin palos de 200m+`, cH:(st)=>!st.c200 }
 ];
