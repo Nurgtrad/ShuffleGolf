@@ -1,4 +1,7 @@
-// Función auxiliar para calcular la distancia real según el golfista para la UI
+/**
+ * DECK GOLF - Lógica de Cartas y Construcción de Mazo
+ */
+
 function getUIAdjustedDist(baseDist) {
     if (!state.golfer) return baseDist;
     let m = 1.0;
@@ -99,22 +102,28 @@ function showDeckBuilder() {
     let tU = 0; 
     state.golfer = typeof GOLFERS !== 'undefined' ? GOLFERS[0] : null;
 
+    grid.innerHTML = '';
+    const step1Div = document.createElement('div');
+    step1Div.style.cssText = 'width: 100%; display: flex; flex-direction: column; align-items: center;';
+    const step2Div = document.createElement('div');
+    step2Div.style.cssText = 'width: 100%; display: none; flex-direction: column; align-items: center;';
+    
+    grid.appendChild(step1Div);
+    grid.appendChild(step2Div);
+
     function renderStep1() {
-        // Truco para obligar a Safari a repintar el contenido sin fallos
-        grid.style.display = 'none';
-        grid.innerHTML = '';
-        grid.style.display = 'flex';
-        
+        step1Div.innerHTML = '';
         counter.style.display = 'none';
+        
         const tGolfers = document.createElement('div');
         tGolfers.className = 'db-title';
         tGolfers.style.marginTop = '45px';
         tGolfers.textContent = 'Selecciona tu Jugador';
-        grid.appendChild(tGolfers);
+        step1Div.appendChild(tGolfers);
 
         const cGolfers = document.createElement('div');
         cGolfers.className = 'db-wrap';
-        grid.appendChild(cGolfers);
+        step1Div.appendChild(cGolfers);
 
         if (typeof GOLFERS !== 'undefined') {
             GOLFERS.forEach((g, i) => {
@@ -142,10 +151,7 @@ function showDeckBuilder() {
                     });
                     div.classList.add('selected', 'show-tooltip'); 
                     div.querySelector('.card-badge').style.display='flex';
-                    
-                    // Mostramos el tooltip 2.5s y lo ocultamos, sin usar mouseenter (perfecto para móvil)
                     setTimeout(() => div.classList.remove('show-tooltip'), 2500);
-                    
                     state.golfer = g;
                     btn.disabled = false;
                 };
@@ -154,51 +160,28 @@ function showDeckBuilder() {
         }
         btn.textContent = 'Confirmar Jugador';
         btn.disabled = !state.golfer;
-        btn.onclick = () => renderStep2();
+        btn.onclick = () => {
+            step1Div.style.display = 'none';
+            renderStep2();
+            step2Div.style.display = 'flex';
+        };
     }
 
     function renderStep2() {
-        // Truco para obligar a Safari a repintar el contenido sin fallos
-        grid.style.display = 'none';
-        grid.innerHTML = '';
-        grid.style.display = 'flex';
-        
+        step2Div.innerHTML = '';
         counter.style.display = 'block';
         const maxU = (typeof MAX_UPGRADES !== 'undefined') ? MAX_UPGRADES : 2;
         counter.textContent = `Mejoras: ${tU} / ${maxU}`;
 
-        const tClubs = document.createElement('div');
-        tClubs.className = 'db-title muted';
-        tClubs.textContent = 'Tus Palos Base';
-        grid.appendChild(tClubs);
-
-        const cClubs = document.createElement('div');
-        cClubs.className = 'db-wrap';
-        grid.appendChild(cClubs);
-
-        if (typeof CLUBS_POOL !== 'undefined') {
-            CLUBS_POOL.forEach(c => {
-                const div = document.createElement('div'); 
-                div.className = 'card'; 
-                div.style.cssText = 'opacity:0.5; transform:scale(0.85); pointer-events:none; margin:-4px;';
-                const dDist = getUIAdjustedDist(c.dist);
-                div.innerHTML = `<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
-                cClubs.appendChild(div);
-            });
-        }
-
-        const sep = document.createElement('div');
-        sep.className = 'db-sep';
-        grid.appendChild(sep);
-
+        // --- 1. MEJORAS (INTERACTIVO ARRIBA) ---
         const tUpgrades = document.createElement('div');
         tUpgrades.className = 'db-title';
         tUpgrades.textContent = 'Elige tus Mejoras';
-        grid.appendChild(tUpgrades);
+        step2Div.appendChild(tUpgrades);
 
         const cUpgrades = document.createElement('div');
         cUpgrades.className = 'db-wrap';
-        grid.appendChild(cUpgrades);
+        step2Div.appendChild(cUpgrades);
 
         UPGRADES_POOL.forEach(c => {
             if (state.upgradesConfig[c.id] === undefined) state.upgradesConfig[c.id] = 0; 
@@ -223,6 +206,33 @@ function showDeckBuilder() {
             }; 
             cUpgrades.appendChild(div);
         });
+
+        // --- SEPARADOR ---
+        const sep = document.createElement('div');
+        sep.className = 'db-sep';
+        step2Div.appendChild(sep);
+
+        // --- 2. PALOS BASE (INFORMATIVO ABAJO) ---
+        const tClubs = document.createElement('div');
+        tClubs.className = 'db-title muted';
+        tClubs.textContent = 'Tus Palos Base';
+        step2Div.appendChild(tClubs);
+
+        const cClubs = document.createElement('div');
+        cClubs.className = 'db-wrap';
+        step2Div.appendChild(cClubs);
+
+        if (typeof CLUBS_POOL !== 'undefined') {
+            CLUBS_POOL.forEach(c => {
+                const div = document.createElement('div'); 
+                div.className = 'card'; 
+                div.style.cssText = 'opacity:0.5; transform:scale(0.85); pointer-events:none; margin:-4px;';
+                const dDist = getUIAdjustedDist(c.dist);
+                div.innerHTML = `<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
+                cClubs.appendChild(div);
+            });
+        }
+
         btn.textContent = 'Confirmar y Jugar';
         btn.disabled = (tU !== maxU);
         btn.onclick = () => { overlay.style.display='none'; initDeck(); startHole(0); };
