@@ -1,33 +1,81 @@
 const $ = id => document.getElementById(id);
 
+// =========================================================================
+// ZONA DE ICONOS (PREPARACIÓN PARA SVGs)
+// =========================================================================
+// Cuando tengas tus SVG, simplemente borra las comillas con el emoji
+// y pega tu código SVG envuelto en acentos graves (` `).
+// Ejemplo: 
+// club_driver: `<svg viewBox="0 0 24 24"><path d="..." fill="currentColor"/></svg>`,
+
+const ICONS = {
+  // Golfistas
+  golfer: '🏌️',
+
+  // Palos
+  club_driver: '🏌',
+  club_wood: '🌲',
+  club_iron: '⛳',
+  club_wedge: '🎯',
+  club_sand: '⏳',
+  club_lob: '📐',
+  club_putt: '🕳',
+
+  // Mejoras
+  upg_power: '🔥',
+  upg_aero: '💨',
+  upg_mulligan: '⏪',
+  upg_skimmer: '🏄',
+  upg_allterrain: '🚙',
+  upg_control: '🎯',
+
+  // Gemas y Recompensas
+  gem_dia: '💎',
+  gem_rub: '💍',
+  gem_esm: '👑',
+  gem_top: '🪨',
+  gem_cua: '🔮',
+  money: '🪙',
+  
+  // Varios UI
+  question: '❓'
+};
+
 const CLUBS_POOL = [
-  {id:'d', name:'Driver', dist:240, icon:'🏌', type:'club'},{id:'3w', name:'3 Wood', dist:215, icon:'🌲', type:'club'},
-  {id:'5w', name:'5 Wood', dist:200, icon:'🌲', type:'club'},{name:'3 Iron', dist:190, icon:'⛳', type:'club'},
-  {name:'4 Iron', dist:180, icon:'⛳', type:'club'},{name:'5 Iron', dist:170, icon:'⛳', type:'club'},
-  {name:'6 Iron', dist:160, icon:'⛳', type:'club'},{name:'7 Iron', dist:150, icon:'⛳', type:'club'},
-  {name:'8 Iron', dist:140, icon:'⛳', type:'club'},{name:'9 Iron', dist:130, icon:'⛳', type:'club'},
-  {name:'Pitch W', dist:110, icon:'🎯', type:'club'},{name:'Gap W', dist:95,  icon:'🎯', type:'club'},
-  {name:'Sand W', dist:80,  icon:'⏳', type:'club'},{name:'Lob W', dist:60,  icon:'📐', type:'club'}
+  {id:'d', name:'Driver', dist:240, icon:ICONS.club_driver, type:'club'},
+  {id:'3w', name:'3 Wood', dist:215, icon:ICONS.club_wood, type:'club'},
+  {id:'5w', name:'5 Wood', dist:200, icon:ICONS.club_wood, type:'club'},
+  {name:'3 Iron', dist:190, icon:ICONS.club_iron, type:'club'},
+  {name:'4 Iron', dist:180, icon:ICONS.club_iron, type:'club'},
+  {name:'5 Iron', dist:170, icon:ICONS.club_iron, type:'club'},
+  {name:'6 Iron', dist:160, icon:ICONS.club_iron, type:'club'},
+  {name:'7 Iron', dist:150, icon:ICONS.club_iron, type:'club'},
+  {name:'8 Iron', dist:140, icon:ICONS.club_iron, type:'club'},
+  {name:'9 Iron', dist:130, icon:ICONS.club_iron, type:'club'},
+  {name:'Pitch W', dist:110, icon:ICONS.club_wedge, type:'club'},
+  {name:'Gap W', dist:95,  icon:ICONS.club_wedge, type:'club'},
+  {name:'Sand W', dist:80,  icon:ICONS.club_sand, type:'club'},
+  {name:'Lob W', dist:60,  icon:ICONS.club_lob, type:'club'}
 ];
-CLUBS_POOL.forEach((c,i) => c.baseId = c.id || `c${i}`);
 
 const UPGRADES_POOL = [
-  {id:'u_power', name:'Power', icon:'🔥', effect:'power', desc:'+25% distancia', type:'upgrade'},
-  {id:'u_heavy', name:'Heavy', icon:'🪨', effect:'heavy', desc:'Ignora viento', type:'upgrade'},
-  {id:'u_mulligan', name:'Mulligan', icon:'⏪', effect:'mulligan', desc:'Rebobina (OB/Agua)', type:'upgrade'},
-  {id:'u_frog', name:'Rana', icon:'🐸', effect:'frog', desc:'Rebota sobre agua', type:'upgrade'},
-  {id:'u_tractor', name:'Oruga', icon:'🚜', effect:'tractor', desc:'Sin penaliz. terreno', type:'upgrade'}
+  {id:'u_power', name:'Power', icon:ICONS.upg_power, effect:'power', desc:'+25% distance', type:'upgrade'},
+  {id:'u_heavy', name:'Aero', icon:ICONS.upg_aero, effect:'heavy', desc:'Ignores wind', type:'upgrade'},
+  {id:'u_mulligan', name:'Mulligan', icon:ICONS.upg_mulligan, effect:'mulligan', desc:'Rewind (OB/Water)', type:'upgrade'},
+  {id:'u_frog', name:'Skimmer', icon:ICONS.upg_skimmer, effect:'frog', desc:'Bounces on water', type:'upgrade'},
+  {id:'u_tractor', name:'All-Terrain', icon:ICONS.upg_allterrain, effect:'tractor', desc:'No lie penalty', type:'upgrade'},
+  {id:'u_control', name:'Control', icon:ICONS.upg_control, effect:'control', desc:'Best accuracy', type:'upgrade'}
 ];
 
 const GEMS_POOL = [
-  {id:'g_dia', name:'Diamante', icon:'💎', price:500, chance:5, type:'gem'},
-  {id:'g_rub', name:'Rubí', icon:'💍', price:250, chance:15, type:'gem'},
-  {id:'g_esm', name:'Esmeralda', icon:'👑', price:100, chance:25, type:'gem'},
-  {id:'g_top', name:'Topacio', icon:'🪨', price:50, chance:30, type:'gem'},
-  {id:'g_cua', name:'Cuarzo', icon:'🔮', price:25, chance:25, type:'gem'}
+  {id:'g_dia', name:'Diamante', icon:ICONS.gem_dia, price:500, chance:5, type:'gem'},
+  {id:'g_rub', name:'Rubí', icon:ICONS.gem_rub, price:250, chance:15, type:'gem'},
+  {id:'g_esm', name:'Esmeralda', icon:ICONS.gem_esm, price:100, chance:25, type:'gem'},
+  {id:'g_top', name:'Topacio', icon:ICONS.gem_top, price:50, chance:30, type:'gem'},
+  {id:'g_cua', name:'Cuarzo', icon:ICONS.gem_cua, price:25, chance:25, type:'gem'}
 ];
 
-const PUTTER_CARD = {baseId:'putt', name:'Putt', dist:30, icon:'🕳', type:'club', isPutt:true};
+const PUTTER_CARD = {baseId:'putt', name:'Putt', dist:30, icon:ICONS.club_putt, type:'club', isPutt:true};
 const HOLE_PARS = [4,4,3,5,4,3,4,5,4, 4,3,4,4,5,4,3,5,4];
 const MAX_CLUBS = 20, MAX_UPGRADES = 2, MAX_INVENTORY = 6;
 

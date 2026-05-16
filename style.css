@@ -22,8 +22,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 /* AUDIO PANEL */
 #audio-panel { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
 #mute-btn { background: none; border: none; color: var(--text); font-size: 16px; cursor: pointer; padding: 0; line-height: 1; }
-#volume-slider { width: 60px; height: 4px; -webkit-appearance: none; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
-#volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--accent); border-radius: 50%; border: 1px solid #000; }
+#volume-slider { width: 60px; height: 4px; -webkit-appearance: none; appearance: none; background: var(--surface2); border-radius: 2px; outline: none; }
+#volume-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; background: var(--text); border-radius: 50%; cursor: pointer; }
 
 /* WIND WIDGET */
 #wind-widget { position: absolute; top: 15px; left: 15px; z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 4px; background: rgba(0,0,0,0.6); padding: 8px 6px; border-radius: 8px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); width: 44px; pointer-events: none; }
@@ -50,9 +50,11 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .slot-spinning #slot-reel-2 { animation-delay: 0.05s; }
 .slot-spinning #slot-reel-3 { animation-delay: 0.1s; }
 
+/* SVG PROPORTION */
+.card-icon svg, .upgrade-btn svg, .golfer-icon svg { width: 100%; height: 100%; object-fit: contain; }
 
 /* -------------------------------------------------------- */
-/* CLASES ESTRUCTURALES DEL DECK BUILDER (NUEVO) */
+/* CLASES ESTRUCTURALES DEL DECK BUILDER */
 /* -------------------------------------------------------- */
 .db-title { width: 100%; text-align: center; font-weight: bold; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 20px; color: var(--accent2); }
 .db-title.muted { color: var(--text-muted); font-size: 12px; }
@@ -98,7 +100,6 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .golfer-card .card-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: var(--accent2) transparent transparent transparent; }
 .golfer-card:hover .card-tooltip, .golfer-card.show-tooltip .card-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, -4px); }
 
-
 /* CARDS REGULARES (PALOS, GEMAS, MEJORAS) */
 .card{width:76px;height:108px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.1s;padding:8px 6px;text-align:center;user-select:none}
 .card:hover{border-color:var(--accent);background:var(--surface);transform:translateY(-4px)}
@@ -117,7 +118,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .card-badge{position:absolute;top:-6px;left:-6px;background:var(--accent2);color:#000;font-size:10px;font-weight:bold;width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;z-index:2}
 
 /* TOOLTIPS REGULARES */
-.card .card-tooltip { position: absolute; bottom: 115%; left: 50%; transform: translateX(-50%); background: var(--accent2); color: #000; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; white-space: normal; width: 140px; text-align: center; pointer-events: none; opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.card .card-tooltip { position: absolute; bottom: 115%; left: 50%; transform: translateX(-50%); background: var(--accent2); color: #000; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-family: 'DM Mono', monospace; white-space: normal; width: 140px; text-align: center; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.2s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 100; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
 .card .card-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: var(--accent2) transparent transparent transparent; }
 .card:hover .card-tooltip, .card.show-tooltip .card-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, -4px); }
 .card.upgrade-card .card-tooltip { background: #64c8ff; }
@@ -171,7 +172,9 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .msg-btn{padding:12px 32px;background:var(--accent);color:#0a150a;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;font-weight:bold;margin-top:10px}
 .msg-btn:disabled{background:var(--surface2);color:var(--text-muted);cursor:not-allowed;}
 .warning{color:#ff6b6b;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;margin-top:15px;border:1px solid #ff6b6b;padding:12px;border-radius:6px;background:rgba(255,107,107,0.15);font-weight:bold;text-align:center;line-height:1.4}
-#deck-grid, #shop-grid {display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:800px;max-height:50vh;overflow-y:auto; overflow-x:hidden; padding:15px 10px;align-content:flex-start}
+
+/* PADDING REDUCIDO Y OVERFLOW RE-REVISADO */
+#deck-grid, #shop-grid {display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:800px;max-height:50vh;overflow-y:auto; overflow-x:visible; padding:15px 10px;align-content:flex-start}
 #deck-counter{font-family:'DM Serif Display',serif;color:var(--accent2);margin-bottom:-5px}
 #score-table-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 4px; font-family: 'DM Mono', monospace; font-size: 13px; margin-top: 20px;}
 .sc-header { display: flex; justify-content: space-between; color: var(--accent2); font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 6px; margin-bottom: 4px; text-transform: uppercase; }
@@ -185,6 +188,9 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 
 /* REGLAS PARA MÓVILES */
 @media (max-width: 600px) {
+  .overlay { padding: 10px; }
+  #deck-grid, #shop-grid { padding: 15px 5px; }
+  
   .card { width: 52px; height: 80px; padding: 4px; border-radius: 6px; }
   
   .golfer-card { width: 140px; padding: 10px; gap: 8px; }
@@ -212,4 +218,53 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
     20% { opacity: 1; transform: translate(-50%, -15px) scale(1); } 
     80% { opacity: 1; transform: translate(-50%, -30px) scale(1); } 
     100% { opacity: 0; transform: translate(-50%, -40px) scale(0.9); } 
+}
+
+/* =========================================================================
+   CLASES INTELIGENTES PARA BOCADILLOS DESBORDADOS
+   ========================================================================= */
+
+/* Hacia la derecha: Se ancla al borde derecho de la carta y crece hacia la izquierda */
+.card.show-tooltip .card-tooltip.tooltip-right,
+.golfer-card.show-tooltip .card-tooltip.tooltip-right {
+  left: auto !important; 
+  right: 0 !important; 
+  transform: translateY(-4px) !important; 
+}
+
+/* Hacia la izquierda: Se ancla al borde izquierdo de la carta y crece hacia la derecha */
+.card.show-tooltip .card-tooltip.tooltip-left,
+.golfer-card.show-tooltip .card-tooltip.tooltip-left {
+  left: 0 !important; 
+  right: auto !important;
+  transform: translateY(-4px) !important; 
+}
+
+/* --- CENTRADO EXACTO DE LOS TRIÁNGULOS --- */
+
+/* CARTAS REGULARES (Desktop 76px -> centro = 38px) */
+.card.show-tooltip .card-tooltip.tooltip-right::after {
+  left: auto !important; right: 38px !important; margin-right: -6px !important; transform: none !important;
+}
+.card.show-tooltip .card-tooltip.tooltip-left::after {
+  left: 38px !important; right: auto !important; margin-left: -6px !important; transform: none !important;
+}
+
+/* GOLFISTAS (Desktop 220px -> centro = 110px) */
+.golfer-card.show-tooltip .card-tooltip.tooltip-right::after {
+  left: auto !important; right: 110px !important; margin-right: -6px !important; transform: none !important;
+}
+.golfer-card.show-tooltip .card-tooltip.tooltip-left::after {
+  left: 110px !important; right: auto !important; margin-left: -6px !important; transform: none !important;
+}
+
+/* MÓVILES (Adaptación precisa a la reducción de tamaño de las cartas) */
+@media (max-width: 600px) {
+  /* CARTAS REGULARES MÓVIL (52px -> centro = 26px) */
+  .card.show-tooltip .card-tooltip.tooltip-right::after { right: 26px !important; }
+  .card.show-tooltip .card-tooltip.tooltip-left::after { left: 26px !important; }
+  
+  /* GOLFISTAS MÓVIL (140px -> centro = 70px) */
+  .golfer-card.show-tooltip .card-tooltip.tooltip-right::after { right: 70px !important; }
+  .golfer-card.show-tooltip .card-tooltip.tooltip-left::after { left: 70px !important; }
 }

@@ -5,10 +5,10 @@
 const GOLFERS = [
     {
         id: 'g_marray',
-        name: 'Marray',
+        name: 'McRolly',
         difficulty: 'Fácil',
         stats: { straight: 5, power: 2, control: 4 },
-        desc: 'Golpes precisos y controlados, pero carece de fuerza bruta.',
+        desc: 'Golpes precisos y controlados, carece de fuerza.',
         
         // 5/5 Straight: Desvío 0%
         getDeviation: () => { return { type: 'none', value: 0 }; },
@@ -21,7 +21,7 @@ const GOLFERS = [
     },
     {
         id: 'g_mckinze',
-        name: 'McKinze',
+        name: 'Schuffle',
         difficulty: 'Normal',
         stats: { straight: 4, power: 4, control: 3 },
         desc: 'Equilibrado. Sufre de un ligero Fade constante.',

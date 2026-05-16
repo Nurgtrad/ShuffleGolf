@@ -43,7 +43,7 @@ function onBtnDown(e){
     } 
 }
 // El evento de "soltar" el botón ya no hace nada con este nuevo sistema
-function onBtnUp(e){ if(e&&e.type!=='keyup')e.preventDefault(); }
+function onBtnUp(e){ }
 
 sBtn.addEventListener('touchstart',onBtnDown,{passive:false}); sBtn.addEventListener('touchend',onBtnUp,{passive:false}); sBtn.addEventListener('mousedown',onBtnDown); window.addEventListener('mouseup',onBtnUp); window.addEventListener('keydown',(e)=>{if(e.code==='Space'&&!e.repeat)onBtnDown(e);}); window.addEventListener('keyup',(e)=>{if(e.code==='Space')onBtnUp(e);});
 
@@ -226,7 +226,16 @@ function animateFlight(d, dev, c, dX, dY, pX, pY) {
 
 function createMulliganUI() {
     let m = $('mulligan-overlay');
-    if (!m) { m = document.createElement('div'); m.id='mulligan-overlay'; m.className='overlay'; m.style.zIndex=70; m.innerHTML=`<div class="msg-title" style="font-size:28px;" id="mul-title">¡Oh no!</div><div class="msg-sub">Tienes un ⏪ Mulligan en la mano. ¿Quieres gastarlo para rebobinar el tiempo y recuperar tu tiro (y las cartas gastadas)?</div><div style="display:flex; gap:10px; margin-top:10px;"><button class="msg-btn" id="mul-btn-no" style="background:var(--surface2); color:var(--text);">Penalización</button><button class="msg-btn" id="mul-btn-yes">Usar Mulligan</button></div>`; $('game').appendChild(m); }
+    if (!m) { 
+        m = document.createElement('div'); m.id='mulligan-overlay'; m.className='overlay'; m.style.zIndex=70; 
+        m.innerHTML=`<div class="msg-title" style="font-size:28px;" id="mul-title">¡Oh no!</div>
+        <div class="msg-sub" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <div style="font-size:32px;">${ICONS.upg_mulligan}</div>
+            <div>Tienes un Mulligan en la mano. ¿Quieres gastarlo para rebobinar el tiempo y recuperar tu tiro (y las cartas gastadas)?</div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:10px;"><button class="msg-btn" id="mul-btn-no" style="background:var(--surface2); color:var(--text);">Penalización</button><button class="msg-btn" id="mul-btn-yes">Usar Mulligan</button></div>`; 
+        $('game').appendChild(m); 
+    }
     return m;
 }
 
@@ -354,8 +363,8 @@ function holeComplete(max) {
   $('h-score').textContent=state.totalScore===0?'E':(state.totalScore>0?'+'+state.totalScore:state.totalScore);
   let e=0; if(state.strokes===1)e+=450; else if(d===-3)e+=300; else if(d===-2)e+=225; else if(d===-1)e+=150; else if(d===0)e+=100; if(state.shotTerrain==='fairway')e+=50; state.money+=e; $('h-money').textContent=state.money;
   
-  const ns={'-3':'Albatross', '-2':'Eagle', '-1':'Birdie', '0':'Par', '1':'Bogey', '2':'Doble Bogey'};
-  let sN = ns[String(d)] || 'Otra';
+  const ns={'-4':'Condor', '-3':'Albatross', '-2':'Eagle', '-1':'Birdie', '0':'Par', '1':'Bogey', '2':'Doble Bogey', '3':'Triple Bogey', '4':'Cuádruple Bogey'};
+  let sN = ns[String(d)] || `+${d}`;
   
   state.missions.forEach(m => { if(!m.done && m.cH && m.cH({ strokes:state.strokes, score:sN, uUpg:state.m_upgs, hz:state.m_hz, c200:state.m_c200, m:m })) m.done = true; }); renderMissions();
   let mDone = state.missions.filter(m=>m.done).length;

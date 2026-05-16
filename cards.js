@@ -28,7 +28,11 @@ function initDeck() {
 
 function renderUpgrades() {
     const bar = $('upgrades-bar'); bar.innerHTML = '';
+    let controlActive = false; 
+    
     state.activeUpgrades.forEach(u => {
+        if (u.id === 'u_control' && u.active) controlActive = true;
+        
         const btn = document.createElement('div'); 
         btn.className = 'upgrade-btn' + (u.active ? ' active' : '') + (u.uses === 0 ? ' empty' : '');
         btn.innerHTML = `${u.icon}<div class="upgrade-uses">${u.uses}</div>`;
@@ -39,6 +43,13 @@ function renderUpgrades() {
         };
         bar.appendChild(btn);
     });
+
+    const aimTrack = $('aim-track');
+    if (aimTrack) {
+        aimTrack.style.width = controlActive ? '50%' : '100%';
+        aimTrack.style.margin = controlActive ? '0 auto' : '0';
+        aimTrack.style.transition = 'width 0.25s ease-in-out'; 
+    }
 }
 
 function drawCardsToHand() {
@@ -53,7 +64,7 @@ function drawCardsToHand() {
   while(state.hand.length < 5) { if(!state.drawPile.length) break; state.hand.push(state.drawPile.pop()); }
   
   if(sHP && ePI === -1){ 
-      let p = {baseId:'putt', name:'Putt', dist:pD, icon:'🕳', type:'club', isPutt:true};
+      let p = {baseId:'putt', name:'Putt', dist:pD, icon:ICONS.club_putt, type:'club', isPutt:true};
       state.hand.push(cloneCard(p)); 
   } else if (sHP && ePI !== -1) {
       state.hand[ePI].dist = pD;
@@ -134,7 +145,7 @@ function showDeckBuilder() {
                 let diffClass = g.difficulty === 'Fácil' ? 'diff-Facil' : (g.difficulty === 'Normal' ? 'diff-Normal' : 'diff-Dificil');
                 div.innerHTML = `
                     <div class="card-badge" style="display:${isSelected ? 'flex' : 'none'}; position:absolute; top:-6px; left:-6px; background:var(--accent2); color:#000; font-size:10px; font-weight:bold; width:20px; height:20px; border-radius:10px; align-items:center; justify-content:center; z-index:2;">✔</div>
-                    <div class="golfer-icon ${colorClass}">🏌️</div>
+                    <div class="golfer-icon ${colorClass}">${ICONS.golfer}</div>
                     <div style="font-size:14px; color:#fff; margin-bottom:8px; letter-spacing:0.12em; text-transform:uppercase; font-weight:bold;">${g.name}</div>
                     <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
                         <div class="stat-row"><span>Recto</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.straight/5)*100}%"></div></div></div>
@@ -148,10 +159,31 @@ function showDeckBuilder() {
                     cGolfers.querySelectorAll('.golfer-card').forEach(x => { 
                         x.classList.remove('selected', 'show-tooltip'); 
                         x.querySelector('.card-badge').style.display='none'; 
+                        let t = x.querySelector('.card-tooltip');
+                        if(t) t.classList.remove('tooltip-right', 'tooltip-left');
                     });
+                    
                     div.classList.add('selected', 'show-tooltip'); 
                     div.querySelector('.card-badge').style.display='flex';
                     setTimeout(() => div.classList.remove('show-tooltip'), 2500);
+
+                    const tooltip = div.querySelector('.card-tooltip');
+                    if (tooltip) {
+                        tooltip.classList.remove('tooltip-right', 'tooltip-left');
+                        
+                        // Forzamos al navegador a recalcular el CSS en este milisegundo exacto
+                        void tooltip.offsetWidth; 
+                        
+                        const gridRect = grid.getBoundingClientRect();
+                        const tRect = tooltip.getBoundingClientRect();
+                        
+                        if (tRect.right > gridRect.right) {
+                            tooltip.classList.add('tooltip-right');
+                        } else if (tRect.left < gridRect.left) {
+                            tooltip.classList.add('tooltip-left');
+                        }
+                    }
+
                     state.golfer = g;
                     btn.disabled = false;
                 };
@@ -173,7 +205,6 @@ function showDeckBuilder() {
         const maxU = (typeof MAX_UPGRADES !== 'undefined') ? MAX_UPGRADES : 2;
         counter.textContent = `Mejoras: ${tU} / ${maxU}`;
 
-        // --- 1. MEJORAS (INTERACTIVO ARRIBA) ---
         const tUpgrades = document.createElement('div');
         tUpgrades.className = 'db-title';
         tUpgrades.textContent = 'Elige tus Mejoras';
@@ -195,8 +226,34 @@ function showDeckBuilder() {
                 ${c.desc ? `<div class="card-tooltip">${c.desc}</div>` : ''}
             `;
             div.onclick = () => {
-                cUpgrades.querySelectorAll('.card').forEach(x => x.classList.remove('show-tooltip')); 
-                if(c.desc) { div.classList.add('show-tooltip'); setTimeout(() => div.classList.remove('show-tooltip'), 2500); }
+                cUpgrades.querySelectorAll('.card').forEach(x => {
+                    x.classList.remove('show-tooltip');
+                    let t = x.querySelector('.card-tooltip');
+                    if(t) t.classList.remove('tooltip-right', 'tooltip-left');
+                }); 
+                
+                if(c.desc) { 
+                    div.classList.add('show-tooltip'); 
+                    setTimeout(() => div.classList.remove('show-tooltip'), 2500);
+
+                    const tooltip = div.querySelector('.card-tooltip');
+                    if (tooltip) {
+                        tooltip.classList.remove('tooltip-right', 'tooltip-left');
+                        
+                        // Forzamos al navegador a recalcular el CSS
+                        void tooltip.offsetWidth; 
+                        
+                        const gridRect = grid.getBoundingClientRect();
+                        const tRect = tooltip.getBoundingClientRect();
+
+                        if (tRect.right > gridRect.right) {
+                            tooltip.classList.add('tooltip-right');
+                        } else if (tRect.left < gridRect.left) {
+                            tooltip.classList.add('tooltip-left');
+                        }
+                    }
+                }
+
                 const n = state.upgradesConfig[c.id];
                 if (n === 1) { state.upgradesConfig[c.id] = 0; tU--; } else if (n === 0 && tU < maxU) { state.upgradesConfig[c.id] = 1; tU++; }
                 const badge = div.querySelector('.card-badge');
@@ -207,12 +264,10 @@ function showDeckBuilder() {
             cUpgrades.appendChild(div);
         });
 
-        // --- SEPARADOR ---
         const sep = document.createElement('div');
         sep.className = 'db-sep';
         step2Div.appendChild(sep);
 
-        // --- 2. PALOS BASE (INFORMATIVO ABAJO) ---
         const tClubs = document.createElement('div');
         tClubs.className = 'db-title muted';
         tClubs.textContent = 'Tus Palos Base';
@@ -350,26 +405,29 @@ function grantSpecificUpgrade(u) {
 function showSlotMachine(spins, baseCash, cb) {
     const o = $('slot-overlay'), rls = [$('slot-reel-1'), $('slot-reel-2'), $('slot-reel-3')], btn = $('slot-spin-btn'), eBtn = $('slot-exit-btn'), res = $('slot-result');
     let sL = spins; $('slot-spins').textContent = sL; eBtn.style.display = 'none'; btn.style.display = 'block'; btn.disabled = false; 
-    state.money += baseCash; $('h-money').textContent = state.money; res.textContent = `¡Diana! +${baseCash} 🪙`; $('slot-sub').textContent = `¡Premio por puntería!`; rls.forEach(r => r.textContent = '❓');
-    const items = ['🪙', '⛳', '💎', '🔥']; let sI; o.style.display = 'flex';
+    state.money += baseCash; $('h-money').textContent = state.money; res.textContent = `¡Diana! +${baseCash} 🪙`; $('slot-sub').textContent = `¡Premio por puntería!`; rls.forEach(r => r.innerHTML = ICONS.question);
+    
+    const items = [ICONS.money, ICONS.club_iron, ICONS.gem_dia, ICONS.upg_power]; 
+    let sI; o.style.display = 'flex';
     
     btn.onclick = () => {
         if(sL <= 0) return; sL--; $('slot-spins').textContent = sL; btn.disabled = true; $('slot-machine').classList.add('slot-spinning'); res.textContent = '...Girando...';
         if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('slot');
-        let ticks = 0; sI = setInterval(() => { rls.forEach(r => r.textContent = items[ticks % items.length]); ticks++; if(typeof AudioEngine!=='undefined') AudioEngine.playSFX('tick'); }, 100);
+        let ticks = 0; sI = setInterval(() => { rls.forEach(r => r.innerHTML = items[ticks % items.length]); ticks++; if(typeof AudioEngine!=='undefined') AudioEngine.playSFX('tick'); }, 100);
         setTimeout(() => {
             clearInterval(sI); $('slot-machine').classList.remove('slot-spinning');
             if(typeof AudioEngine!=='undefined') { AudioEngine.stopBGM(); AudioEngine.playSFX('slot_stop'); }
             let r1, r2, r3;
-            if (getTotalClubsInDeck() < 8 && Math.random() < 0.8) { r1 = r2 = r3 = '⛳'; } 
+            if (getTotalClubsInDeck() < 8 && Math.random() < 0.8) { r1 = r2 = r3 = ICONS.club_iron; } 
             else if (Math.random() < 0.35) { let w = items[Math.floor(Math.random()*items.length)]; r1 = r2 = r3 = w; } 
             else { r1 = items[Math.floor(Math.random()*items.length)]; r2 = items[Math.floor(Math.random()*items.length)]; r3 = items[Math.floor(Math.random()*items.length)]; if (r1 === r2 && r2 === r3) r3 = items[(items.indexOf(r3)+1)%items.length]; }
-            rls[0].textContent = r1; rls[1].textContent = r2; rls[2].textContent = r3;
+            rls[0].innerHTML = r1; rls[1].innerHTML = r2; rls[2].innerHTML = r3;
+            
             if (r1 === r2 && r2 === r3) {
-                if(r1 === '🪙') { let m = [50,100][Math.floor(Math.random()*2)]; state.money += m; $('h-money').textContent = state.money; res.textContent = `¡LÍNEA! +${m} 🪙`; }
-                else if(r1 === '⛳') { const c=cloneCard(CLUBS_POOL[Math.floor(Math.random()*CLUBS_POOL.length)]); state.drawPile.push(c); res.textContent = `¡LÍNEA! Palo: ${c.name}`; }
-                else if(r1 === '💎') { const g=cloneCard(getRandomGem()); state.gems.push(g); res.textContent = `¡LÍNEA! Gema: ${g.name}`; }
-                else if(r1 === '🔥') { let u=UPGRADES_POOL[Math.floor(Math.random()*UPGRADES_POOL.length)]; grantSpecificUpgrade(u); res.textContent = `¡LÍNEA! Mejora: ${u.name}`; }
+                if(r1 === ICONS.money) { let m = [50,100][Math.floor(Math.random()*2)]; state.money += m; $('h-money').textContent = state.money; res.textContent = `¡LÍNEA! +${m} 🪙`; }
+                else if(r1 === ICONS.club_iron) { const c=cloneCard(CLUBS_POOL[Math.floor(Math.random()*CLUBS_POOL.length)]); state.drawPile.push(c); res.textContent = `¡LÍNEA! Palo: ${c.name}`; }
+                else if(r1 === ICONS.gem_dia) { const g=cloneCard(getRandomGem()); state.gems.push(g); res.textContent = `¡LÍNEA! Gema: ${g.name}`; }
+                else if(r1 === ICONS.upg_power) { let u=UPGRADES_POOL[Math.floor(Math.random()*UPGRADES_POOL.length)]; grantSpecificUpgrade(u); res.textContent = `¡LÍNEA! Mejora: ${u.name}`; }
                 if(typeof AudioEngine!=='undefined') setTimeout(()=>AudioEngine.playSFX('slot_win'), 200);
             } else { res.textContent = 'Sin premio extra.'; if(typeof AudioEngine!=='undefined') setTimeout(()=>AudioEngine.playSFX('slot_lose'), 200); }
             if(sL > 0) btn.disabled = false; else { btn.style.display = 'none'; eBtn.style.display = 'block'; }
