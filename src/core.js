@@ -140,7 +140,7 @@ function renderMissions() {
 
   state.missions.forEach(m => {
      const d=document.createElement('div'); d.className='mission-item'+(m.done?' done':'');
-     d.innerHTML = (m.done?'✅ ':'⬜ ') + m.n(m.v); p.appendChild(d);
+     d.innerHTML = (m.done?getIcon('check'):getIcon('unchecked')) + ' ' + m.n(m.v); p.appendChild(d);
   });
 }
 
@@ -151,7 +151,7 @@ function updateReachDisplay() {
   
   let bD = state.activeUpgrades.some(u=>u.id==='u_power'&&u.active) ? c.dist*1.25 : c.dist;
   let d=Math.round(bD*(1-getLiePenalty(c,state.currentTerrain).pDist));
-  $('d-reach').innerHTML=`~${d} m` + (getLiePenalty(c,state.currentTerrain).pDist>0?`<br><span style="color:var(--danger);font-size:9px;">Penalización Lie -${Math.round(getLiePenalty(c,state.currentTerrain).pDist*100)}%</span>`:'');
+  $('d-reach').innerHTML=`~${d} m` + (getLiePenalty(c,state.currentTerrain).pDist>0?`<br><span style="color:var(--danger);font-size:9px;">${t('lie_penalty',{p:Math.round(getLiePenalty(c,state.currentTerrain).pDist*100)})}</span>`:'');
 }
 
 function executeShot() {
@@ -228,12 +228,12 @@ function createMulliganUI() {
     let m = $('mulligan-overlay');
     if (!m) { 
         m = document.createElement('div'); m.id='mulligan-overlay'; m.className='overlay'; m.style.zIndex=70; 
-        m.innerHTML=`<div class="msg-title" style="font-size:28px;" id="mul-title">¡Oh no!</div>
+        m.innerHTML=`<div class="msg-title" style="font-size:28px;" id="mul-title">${t('mul_title')}</div>
         <div class="msg-sub" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
             <div style="font-size:32px;">${ICONS.upg_mulligan}</div>
-            <div>Tienes un Mulligan en la mano. ¿Quieres gastarlo para rebobinar el tiempo y recuperar tu tiro (y las cartas gastadas)?</div>
+            <div>${t('mul_desc')}</div>
         </div>
-        <div style="display:flex; gap:10px; margin-top:10px;"><button class="msg-btn" id="mul-btn-no" style="background:var(--surface2); color:var(--text);">Penalización</button><button class="msg-btn" id="mul-btn-yes">Usar Mulligan</button></div>`; 
+        <div style="display:flex; gap:10px; margin-top:10px;"><button class="msg-btn" id="mul-btn-no" style="background:var(--surface2); color:var(--text);">${t('mul_no')}</button><button class="msg-btn" id="mul-btn-yes">${t('mul_yes')}</button></div>`;
         $('game').appendChild(m); 
     }
     return m;
@@ -254,14 +254,14 @@ function endShot(iHE, fT) {
   if(t==='ob'||t==='agua') {
       const mul = state.activeUpgrades.find(u=>u.id==='u_mulligan' && u.uses > 0);
       if(mul) {
-          const m=$('mulligan-overlay') || createMulliganUI(); $('mul-title').textContent=t==='agua'?"¡Al Agua!":"¡Fuera de Límites!"; $('logo-svg').style.display='none'; m.style.display='flex';
+          const m=$('mulligan-overlay') || createMulliganUI(); $('mul-title').textContent=t==='agua'?window.t('mul_water'):window.t('mul_ob'); $('logo-svg').style.display='none'; m.style.display='flex';
           $('mul-btn-no').onclick=()=>{ m.style.display='none'; applyPenalty(t); };
           $('mul-btn-yes').onclick=()=>{ 
               m.style.display='none'; mul.uses--; 
               state.m_upgs++; 
-              renderUpgrades(); state.ballAnim=null; state.ball.x=state.prevPos.x; state.ball.y=state.prevPos.y; state.strokes--; state.distToHole=Math.hypot(state.ball.x-hd.holeX, state.ball.y-hd.holeY)/hd.scale; state.itemLocked=false; vfxList=[]; drawCourse(); drawBall(); drawUI(); resetMetersUI(); state.phase='card_select'; updateShootBtnUI(); renderCards(); updateReachDisplay(); $('cards-row').style.pointerEvents='auto'; showToast("⏳ Tiempo rebobinado"); 
-              
-              state.missions.forEach(ms => { if(!ms.done && ms.c && ms.c({ strokes:state.strokes, dist:0, pzHit:false, terr:'fairway', inHole:false, pTerr:'fairway', club:null, uUpg:state.m_upgs, m:ms })) { ms.done = true; showToast("Misión Completada"); renderMissions(); } });
+              renderUpgrades(); state.ballAnim=null; state.ball.x=state.prevPos.x; state.ball.y=state.prevPos.y; state.strokes--; state.distToHole=Math.hypot(state.ball.x-hd.holeX, state.ball.y-hd.holeY)/hd.scale; state.itemLocked=false; vfxList=[]; drawCourse(); drawBall(); drawUI(); resetMetersUI(); state.phase='card_select'; updateShootBtnUI(); renderCards(); updateReachDisplay(); $('cards-row').style.pointerEvents='auto'; showToast(window.t('toast_rewound'));
+
+              state.missions.forEach(ms => { if(!ms.done && ms.c && ms.c({ strokes:state.strokes, dist:0, pzHit:false, terr:'fairway', inHole:false, pTerr:'fairway', club:null, uUpg:state.m_upgs, m:ms })) { ms.done = true; showToast(window.t('toast_mission')); renderMissions(); } });
           }; 
           return;
       } else { applyPenalty(t); return; }
@@ -291,7 +291,7 @@ function endShot(iHE, fT) {
 
   state.missions.forEach(m => {
      if(!m.done && m.c && m.c({ strokes:state.strokes, dist:sD, pzHit:pZHit!==null, terr:t, inHole:iHE||state.distToHole<=3.0, pTerr:state.shotTerrain, club:state.hand.find(x=>x.uid===state.selectedClub)?.name, uUpg:state.m_upgs, m:m })) {
-         m.done = true; showToast("Misión Completada"); renderMissions();
+         m.done = true; showToast(window.t('toast_mission')); renderMissions();
      }
   });
 
@@ -316,7 +316,7 @@ function endShot(iHE, fT) {
 
 function applyPenalty(t) {
     const hd=state.holeData; state.ballAnim=null; vfxList=[]; state.ball.x=state.prevPos.x; state.ball.y=state.prevPos.y; state.strokes++; state.distToHole=Math.hypot(state.ball.x-hd.holeX, state.ball.y-hd.holeY)/hd.scale; drawCourse(); drawBall(); drawUI(); resetMetersUI(); state.m_hz = true;
-    const m=$('msg-overlay'); $('logo-svg').style.display='none'; $('msg-title').textContent=t==='agua'?"AGUA":"FUERA DE LÍMITES"; $('msg-sub').textContent="Penalización: +1 golpe"; $('msg-btn').textContent='Continuar'; m.style.display='flex';
+    const m=$('msg-overlay'); $('logo-svg').style.display='none'; $('msg-title').textContent=t==='agua'?window.t('pen_water'):window.t('pen_ob'); $('msg-sub').textContent=window.t('pen_sub'); $('msg-btn').textContent=window.t('btn_continue'); m.style.display='flex';
     $('msg-btn').onclick=()=>{ m.style.display='none'; if(state.strokes>=hd.par+5) holeComplete(true); else finishTurn(state.currentTerrain); };
 }
 
@@ -330,7 +330,7 @@ function finishTurn(t) {
     state.itemLocked=false; 
     autoSelectBestClub(); 
     updateShootBtnUI(); 
-    $('d-pos').textContent={'green':'Green','fairway':'Fairway','semirough':'SemiRough','rough':'Rough','deeprough':'Deep Rough','bunker':'Bunker','ob':'Fuera','agua':'Agua','tee':'Tee'}[t]||'Fairway'; 
+    $('d-pos').textContent=window.t('pos_'+t)||window.t('pos_fairway');
     $('d-hole').textContent=Math.round(state.distToHole)+' m'; 
     $('cards-row').style.pointerEvents='auto'; 
     updateReachDisplay(); 
@@ -346,7 +346,7 @@ function startHole(idx) {
   const hcpText = (state.handicaps && state.handicaps.length > state.hole) ? state.handicaps[state.hole] : '-';
   $('h-hole').innerHTML = `${state.hole+1}<div style="font-size:10px; color:var(--text-muted); font-family:'DM Mono',monospace; margin-top:-2px;">HCP ${hcpText}</div>`; 
   
-  $('h-par').textContent=state.holeData.par; $('h-strokes').textContent=0; $('d-hole').textContent=Math.round(state.distToHole)+' m'; $('d-pos').textContent='Tee';
+  $('h-par').textContent=state.holeData.par; $('h-strokes').textContent=0; $('d-hole').textContent=Math.round(state.distToHole)+' m'; $('d-pos').textContent=t('pos_tee');
   
   generateWind(); 
   drawCardsToHand(); 
@@ -363,8 +363,7 @@ function holeComplete(max) {
   $('h-score').textContent=state.totalScore===0?'E':(state.totalScore>0?'+'+state.totalScore:state.totalScore);
   let e=0; if(state.strokes===1)e+=450; else if(d===-3)e+=300; else if(d===-2)e+=225; else if(d===-1)e+=150; else if(d===0)e+=100; if(state.shotTerrain==='fairway')e+=50; state.money+=e; $('h-money').textContent=state.money;
   
-  const ns={'-4':'Condor', '-3':'Albatross', '-2':'Eagle', '-1':'Birdie', '0':'Par', '1':'Bogey', '2':'Doble Bogey', '3':'Triple Bogey', '4':'Cuádruple Bogey'};
-  let sN = ns[String(d)] || `+${d}`;
+  let sN = (I18N.es['sn_'+d] != null) ? t('sn_'+d) : `+${d}`;
   
   state.missions.forEach(m => { if(!m.done && m.cH && m.cH({ strokes:state.strokes, score:sN, uUpg:state.m_upgs, hz:state.m_hz, c200:state.m_c200, m:m })) m.done = true; }); renderMissions();
   let mDone = state.missions.filter(m=>m.done).length;
@@ -372,14 +371,14 @@ function holeComplete(max) {
 
   const m=$('msg-overlay'); $('logo-svg').style.display='none';
   
-  let baseTitle = max ? "LÍMITE +5" : (state.strokes===1 ? "¡HOLE IN ONE!" : (sN||(d>0?'+'+d:d)));
+  let baseTitle = max ? t('hole_limit') : (state.strokes===1 ? t('hole_in_one') : (sN||(d>0?'+'+d:d)));
   $('msg-title').textContent = baseTitle;
-  
-  let resText = `Hoyo ${state.hole+1} en ${state.strokes} golpes.<br><br>Ganaste ${e} 🪙`;
-  if (mTotal > 0) resText += `<br><br><span style="color:var(--accent2); font-size:15px; font-weight:bold;">Misiones completadas: ${mDone} / ${mTotal}</span>`;
+
+  let resText = tWithIcons('hole_result', {hole: state.hole+1, strokes: state.strokes, money: e});
+  if (mTotal > 0) resText += `<br><br><span style="color:var(--accent2); font-size:15px; font-weight:bold;">${t('hole_missions',{done:mDone, total:mTotal})}</span>`;
   $('msg-sub').innerHTML = resText;
 
-  $('msg-btn').textContent = mDone > 0 ? 'Recoger Recompensa Misión' : 'Continuar a Recompensas';
+  $('msg-btn').textContent = mDone > 0 ? t('hole_collect_mission') : t('hole_to_rewards');
   m.style.display='flex';
   
   const oB=$('msg-btn'), nB=oB.cloneNode(true); oB.parentNode.replaceChild(nB,oB);
@@ -387,32 +386,52 @@ function holeComplete(max) {
     ev.preventDefault(); $('msg-overlay').style.display='none'; discardPlayedCards();
     if(state.strokes===1 && typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); 
     
-    let q=[]; 
+    let q=[];
     if(mDone > 0) q.push((cb) => showMissionReward(mDone, cb));
 
-    if(state.strokes===1) q.push((cb)=>grantReward(3,"¡Hole In One! 3 Cartas",cb)); else if(d<=-2) q.push((cb)=>showPickReward(2,false,cb)); else if(d===-1) q.push((cb)=>showPickReward(1,false,cb));
-    if(state.hole===5||state.hole===11) q.push((cb)=>showShop(cb));
+    if(state.strokes===1) q.push((cb)=>grantReward(3,t('reward_hio'),cb)); else if(d<=-2) q.push((cb)=>showPickReward(2,false,cb)); else if(d===-1) q.push((cb)=>showPickReward(1,false,cb));
+    if(state.hole===5||state.hole===11) q.push((cb)=>showShop(() => {
+      // Show ad after shop, then continue
+      if(typeof AdMobManager !== 'undefined' && LegalManager.hasAdsConsent()) {
+        AdMobManager.showInterstitial(cb);
+      } else {
+        cb();
+      }
+    }));
     
     function p(){ if(state.hole===8||state.hole===17) showScorecard(state.hole===8); else startHole(state.hole+1); }
-    function r(){ if(q.length>0) q.shift()(r); else p(); } r();
+    function r(){
+      if(q.length>0) {
+        q.shift()(r);
+      } else {
+        // Show interstitial ads at specific holes: 5, 12, and after 18
+        const shouldShowAd = typeof AdMobManager !== 'undefined' && LegalManager.hasAdsConsent() && (state.hole === 4 || state.hole === 11 || state.hole === 17);
+        if(shouldShowAd) {
+          AdMobManager.showInterstitial(() => p());
+        } else {
+          p();
+        }
+      }
+    }
+    r();
   };
 }
 
 function showScorecard(mG) {
-  $('score-title').textContent=mG?'Front 9 (Ida)':'Resultados Finales'; $('score-sub').textContent=`Score: ${state.totalScore===0?'E':state.totalScore>0?'+'+state.totalScore:state.totalScore}`;
-  let h=`<div class="sc-header"><span>HOYO</span><span>PAR</span><span>GOLPES</span><span>SCORE</span></div>`, p=0, s=0;
-  state.scores.forEach((x,i)=>{ p+=x.par; s+=x.strokes; h+=`<div class="sc-row"><span>#${i+1}</span><span>${x.par}</span><span>${x.strokes}</span><span style="color:${x.diff<0?'var(--accent)':x.diff>0?'var(--danger)':'var(--text-muted)'}">${x.diff===0?'E':x.diff>0?'+'+x.diff:x.diff}</span></div>`; if(i===8&&!mG) h+=`<div class="sc-row total" style="color:var(--text-muted); border-top:1px dashed rgba(255,255,255,0.1)"><span>IDA</span><span>${p}</span><span>${s}</span><span></span></div>`; });
-  h+=`<div class="sc-row total"><span>${mG?'IDA':'TOTAL'}</span><span>${p}</span><span>${s}</span><span></span></div>`; $('score-table-wrap').innerHTML=h;
-  $('score-btn').textContent=mG?'Continuar':'Nueva Partida'; $('score-overlay').style.display='flex';
-  $('score-btn').onclick=()=>{ $('score-overlay').style.display='none'; if(mG) grantReward(3,"¡Front 9! 3 Cartas",()=>startHole(9)); else location.reload(); };
+  $('score-title').textContent=mG?t('score_front9'):t('score_final'); $('score-sub').textContent=t('score_label',{v:state.totalScore===0?'E':state.totalScore>0?'+'+state.totalScore:state.totalScore});
+  let h=`<div class="sc-header"><span>${t('sc_hole')}</span><span>${t('sc_par')}</span><span>${t('sc_strokes')}</span><span>${t('sc_score')}</span></div>`, p=0, s=0;
+  state.scores.forEach((x,i)=>{ p+=x.par; s+=x.strokes; h+=`<div class="sc-row"><span>#${i+1}</span><span>${x.par}</span><span>${x.strokes}</span><span style="color:${x.diff<0?'var(--accent)':x.diff>0?'var(--danger)':'var(--text-muted)'}">${x.diff===0?'E':x.diff>0?'+'+x.diff:x.diff}</span></div>`; if(i===8&&!mG) h+=`<div class="sc-row total" style="color:var(--text-muted); border-top:1px dashed rgba(255,255,255,0.1)"><span>${t('sc_out')}</span><span>${p}</span><span>${s}</span><span></span></div>`; });
+  h+=`<div class="sc-row total"><span>${mG?t('sc_out'):t('sc_total')}</span><span>${p}</span><span>${s}</span><span></span></div>`; $('score-table-wrap').innerHTML=h;
+  $('score-btn').textContent=mG?t('btn_continue'):t('btn_newgame'); $('score-overlay').style.display='flex';
+  $('score-btn').onclick=()=>{ $('score-overlay').style.display='none'; if(mG) grantReward(3,t('reward_front9'),()=>startHole(9)); else location.reload(); };
 }
 
-if($('mute-btn')) { $('mute-btn').onclick=()=>{ if(typeof AudioEngine!=='undefined'){ const m=AudioEngine.toggleMute(); $('mute-btn').textContent=m?'🔇':'🔊'; } }; }
+if($('mute-btn')) { $('mute-btn').style.fontSize='18px'; $('mute-btn').innerHTML=getIcon('mute_on'); $('mute-btn').onclick=()=>{ if(typeof AudioEngine!=='undefined'){ const m=AudioEngine.toggleMute(); $('mute-btn').innerHTML=m?getIcon('mute_off'):getIcon('mute_on'); } }; }
 if($('volume-slider')) { $('volume-slider').oninput=(e)=>{ if(typeof AudioEngine!=='undefined') AudioEngine.setVolume(parseFloat(e.target.value)); }; }
 
 window.addEventListener('load', ()=>{
-  resizeCanvases(); $('msg-warn').style.display='block'; $('version-text').style.display='block';
-  $('msg-btn').onclick=()=>{ $('msg-overlay').style.display='none'; $('msg-warn').style.display='none'; $('version-text').style.display='none'; if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); showDeckBuilder(); }
+  resizeCanvases(); $('msg-warn').style.display='block'; $('version-text').style.display='block'; if($('menu-lang-switch')) $('menu-lang-switch').style.display='flex';
+  $('msg-btn').onclick=()=>{ $('msg-overlay').style.display='none'; $('msg-warn').style.display='none'; $('version-text').style.display='none'; if($('menu-lang-switch')) $('menu-lang-switch').style.display='none'; if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); showDeckBuilder(); }
   $('msg-overlay').style.display='flex';
 });
 
@@ -421,15 +440,15 @@ function updateShootBtnUI() {
     const b=$('shoot-btn'); 
     if(state.phase==='card_select'){
         b.disabled=!state.selectedClub;
-        b.textContent=state.selectedClub?'INICIAR':'GOLPEAR';
+        b.textContent=state.selectedClub?t('btn_start'):t('btn_shoot');
     }else if(state.phase==='power'){
         b.disabled=false;
-        b.textContent='PARAR';
+        b.textContent=t('btn_stop');
     }else if(state.phase==='aim'){
         b.disabled=false;
-        b.textContent='GOLPEAR';
+        b.textContent=t('btn_shoot');
     }else{
         b.disabled=true;
-        b.textContent='...';
-    } 
+        b.textContent=t('btn_wait');
+    }
 }

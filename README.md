@@ -1,2 +1,2 @@
-# SuffleGolf
-SuffleGolfTest
+# CardGolf
+CardGolfTest

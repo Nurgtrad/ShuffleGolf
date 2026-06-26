@@ -7,8 +7,10 @@ const GOLFERS = [
         id: 'g_marray',
         name: 'McRolly',
         difficulty: 'Fácil',
+        diffKey: 'easy',
         stats: { straight: 5, power: 2, control: 4 },
         desc: 'Golpes precisos y controlados, carece de fuerza.',
+        descKey: 'golfer_g_marray_desc',
         
         // 5/5 Straight: Desvío 0%
         getDeviation: () => { return { type: 'none', value: 0 }; },
@@ -23,8 +25,10 @@ const GOLFERS = [
         id: 'g_mckinze',
         name: 'Schuffle',
         difficulty: 'Normal',
+        diffKey: 'normal',
         stats: { straight: 4, power: 4, control: 3 },
         desc: 'Equilibrado. Sufre de un ligero Fade constante.',
+        descKey: 'golfer_g_mckinze_desc',
         
         // 4/5 Straight (Fade): 5% a 10% de desvío 
         // (Nota: el 'type' lo usaremos luego en core.js para saber si desvía a la derecha o izquierda)
@@ -40,8 +44,10 @@ const GOLFERS = [
         id: 'g_rehm',
         name: 'Rehm',
         difficulty: 'Difícil',
+        diffKey: 'hard',
         stats: { straight: 3, power: 5, control: 2 },
         desc: 'Fuerza extrema. Difícil de controlar y propenso al Slice.',
+        descKey: 'golfer_g_rehm_desc',
         
         // 3/5 Straight (Slice): 10% a 15% de desvío
         getDeviation: () => { return { type: 'slice', value: 0.10 + Math.random() * 0.05 }; },

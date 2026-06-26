@@ -95,16 +95,18 @@ const AudioEngine = (() => {
     };
 
     const sequence = () => {
-        if (!currentTrack || isMuted) return;
+        if (!currentTrack) return;
         const now = ctx.currentTime;
         const stepTime = (60 / currentTrack.bpm) / 4;
         const data = currentTrack.score[currentStep % currentTrack.score.length];
-        
-        const isTension = currentTrack === trackTension;
-        playLead(f(data[0]), now, isTension ? stepTime * 0.3 : stepTime * 1.5);
-        playBass(f(data[1]), now, stepTime * 0.9);
-        playDrum(data[2], now);
-        
+
+        if (!isMuted) {
+            const isTension = currentTrack === trackTension;
+            playLead(f(data[0]), now, isTension ? stepTime * 0.3 : stepTime * 1.5);
+            playBass(f(data[1]), now, stepTime * 0.9);
+            playDrum(data[2], now);
+        }
+
         currentStep++;
         sequenceTimer = setTimeout(sequence, stepTime * 1000);
     };

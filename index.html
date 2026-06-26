@@ -4,26 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Deck Golf</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500;900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/design-tokens.css">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="game">
   <div id="hud">
-    <div class="hud-stat"><div class="hud-label">Hoyo</div><div class="hud-value" id="h-hole">1</div></div>
-    <div class="hud-stat"><div class="hud-label">Par</div><div class="hud-value" id="h-par">4</div></div>
-    <div class="hud-stat"><div class="hud-label">Golpes</div><div class="hud-value" id="h-strokes">0</div></div>
-    <div class="hud-stat"><div class="hud-label">Score</div><div class="hud-value" id="h-score">E</div></div>
-    <div class="hud-stat"><div class="hud-label">Monedas</div><div class="hud-value" style="color:var(--accent2)" id="h-money">0</div></div>
-    <div id="audio-panel">
-      <button id="mute-btn" title="Silenciar">🔊</button>
-      <input type="range" id="volume-slider" min="0" max="0.5" step="0.05" value="0.2">
-    </div>
+    <div class="hud-stat"><div class="hud-label" data-i18n="hud_hole">Hoyo</div><div class="hud-value" id="h-hole">1</div></div>
+    <div class="hud-stat"><div class="hud-label" data-i18n="hud_par">Par</div><div class="hud-value" id="h-par">4</div></div>
+    <div class="hud-stat"><div class="hud-label" data-i18n="hud_strokes">Golpes</div><div class="hud-value" id="h-strokes">0</div></div>
+    <div class="hud-stat"><div class="hud-label" data-i18n="hud_score">Score</div><div class="hud-value" id="h-score">E</div></div>
+    <div class="hud-stat"><div class="hud-label" data-i18n="hud_money">Monedas</div><div class="hud-value" style="color:var(--accent2)" id="h-money">0</div></div>
+    <button id="gear-btn" data-i18n-title="settings_open" title="Ajustes">⚙️</button>
+    <button id="mute-btn-hud" data-i18n-title="settings_mute" title="Silenciar" style="display:none;">🔊</button>
   </div>
 
   <div id="canvas-wrap">
     <div id="wind-widget">
-      <div class="hud-label" style="color:var(--text); font-weight:bold; font-size:8px;">VIENTO</div>
+      <div class="hud-label" data-i18n="wind" style="color:var(--text); font-weight:bold; font-size:8px;">VIENTO</div>
       <div id="wind-flag-wrap">
         <svg id="wind-flag-svg" viewBox="0 0 40 40" fill="none">
           <line x1="20" y1="4" x2="20" y2="36" stroke="#3d6b3d" stroke-width="1.5"/>
@@ -45,43 +44,67 @@
   <div id="bottom">
     <div id="bottom-info">
       <div id="dist-info">
-        <div><div class="dist-label">Distancia al hoyo</div><div class="dist-val" id="d-hole">— m</div></div>
-        <div style="text-align:center"><div class="dist-label">Alcance estimado</div><div class="dist-val" id="d-reach" style="align-items:center">— m</div></div>
-        <div style="text-align:right"><div class="dist-label">Posición</div><div class="dist-val" id="d-pos">Tee</div></div>
+        <div><div class="dist-label" data-i18n="dist_to_hole">Distancia al hoyo</div><div class="dist-val" id="d-hole">— m</div></div>
+        <div style="text-align:center"><div class="dist-label" data-i18n="dist_reach">Alcance estimado</div><div class="dist-val" id="d-reach" style="align-items:center">— m</div></div>
+        <div style="text-align:right"><div class="dist-label" data-i18n="dist_pos">Posición</div><div class="dist-val" id="d-pos" data-i18n="pos_tee">Tee</div></div>
       </div>
       <div id="hand-container">
-        <div id="deck-pile"><div class="deck-count" id="deck-count">24</div><div class="deck-label">Mazo</div></div>
+        <div id="deck-pile"><div class="deck-count" id="deck-count">24</div><div class="deck-label" data-i18n="deck_pile">Mazo</div></div>
         <div id="cards-row"></div>
       </div>
     </div>
     <div id="bottom-actions">
       <div id="meters-row">
-        <div id="meter-power"><div class="meter-label">Fuerza</div><div class="meter-track" id="power-track"><div class="meter-fill" id="power-fill" style="width:0%"></div></div><div class="meter-action">Botón o Espacio</div></div>
+        <div id="meter-power"><div class="meter-label" data-i18n="meter_power">Fuerza</div><div class="meter-track" id="power-track"><div class="meter-fill" id="power-fill" style="width:0%"></div></div><div class="meter-action" data-i18n="meter_power_hint">Botón o Espacio</div></div>
         <div id="meter-aim">
-          <div class="meter-label">Dirección</div>
+          <div class="meter-label" data-i18n="meter_aim">Dirección</div>
           <div class="meter-track" id="aim-track">
               <div style="position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:2px;background:var(--text-muted);opacity:0.6;"></div>
               <div id="aim-cursor"></div>
           </div>
-          <div class="meter-action">Centra para precisión</div>
+          <div class="meter-action" data-i18n="meter_aim_hint">Centra para precisión</div>
       </div>
-      <button id="shoot-btn" disabled>GOLPEAR</button>
+      <button id="shoot-btn" data-i18n="btn_shoot" disabled>GOLPEAR</button>
       </div>
     </div>
   </div>
 
   <div id="msg-overlay" class="overlay">
-    <div id="logo-svg" style="width:100%; max-width:400px; margin: 0 auto 10px;">
-        </div>
+    <div id="logo-svg" style="width:100%; max-width:420px; margin: 0 auto 4px;">
+      <img src="assets/ShuffleGolfLogo.svg" alt="Shuffle Golf" style="width:100%; height:auto; display:block;">
+    </div>
     <div class="msg-title" id="msg-title"></div>
-    <div class="msg-sub" id="msg-sub">Golf Procedural · 18 Hoyos</div>
-    <div class="warning" id="msg-warn" style="display:none">⚠️ ADVERTENCIA<br>Refrescar el navegador borrará tu progreso y tu colección de cartas para siempre.</div>
-    <button class="msg-btn" id="msg-btn">Jugar</button>
+    <div class="msg-sub" id="msg-sub" data-i18n="menu_sub">Golf Procedural · 18 Hoyos</div>
+    <div class="lang-switch" id="menu-lang-switch" style="display:none;">
+      <button data-lang="es">ES</button>
+      <button data-lang="en">EN</button>
+    </div>
+    <div class="warning" id="msg-warn" data-i18n-html="menu_warning" style="display:none">⚠️ ADVERTENCIA<br>Refrescar el navegador borrará tu progreso y tu colección de cartas para siempre.</div>
+    <button class="msg-btn" id="msg-btn" data-i18n="menu_play">Jugar</button>
     <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 1.2</div>
   </div>
 
+  <div id="settings-overlay" class="overlay" style="z-index:80;">
+    <div class="settings-panel">
+      <div class="msg-title" style="font-size:28px;" data-i18n="settings_title">Ajustes</div>
+      <div class="settings-row">
+        <span class="settings-label" data-i18n="settings_volume">Volumen</span>
+        <button id="mute-btn" data-i18n-title="settings_mute" title="Silenciar">🔊</button>
+        <input type="range" id="volume-slider" min="0" max="0.5" step="0.05" value="0.2">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label" data-i18n="settings_language">Idioma</span>
+        <div class="lang-switch">
+          <button data-lang="es">ES</button>
+          <button data-lang="en">EN</button>
+        </div>
+      </div>
+      <button class="msg-btn" id="settings-close" data-i18n="settings_close">Cerrar</button>
+    </div>
+  </div>
+
   <div id="deck-overlay" class="overlay">
-    <div class="msg-title" id="deck-title" style="margin-bottom: 5px;">Vestuario</div>
+    <div class="msg-title" id="deck-title" data-i18n="deck_title" style="margin-bottom: 5px;">Vestuario</div>
     <div id="deck-grid" style="display: flex; flex-direction: column; width: 100%; align-items: center; max-height: 80vh; overflow-y: auto;"></div>
     <div id="deck-counter" style="font-size:16px; margin-top: 10px;">Mejoras: 0 / 2</div>
     <button class="msg-btn" id="deck-btn" disabled>Confirmar y Jugar</button>
@@ -95,67 +118,100 @@
   </div>
 
   <div id="slot-overlay" class="overlay" style="z-index: 52;">
-    <div class="msg-title" style="color:var(--accent2);">Prize Zone</div>
-    <div class="msg-sub" id="slot-sub">¡Has caído en la zona de premio!</div>
+    <div class="msg-title" data-i18n="prize_zone" style="color:var(--accent2);">Prize Zone</div>
+    <div class="msg-sub" id="slot-sub" data-i18n="slot_intro">¡Has caído en la zona de premio!</div>
     <div id="slot-machine" style="background:var(--surface); border:2px solid var(--accent2); border-radius:12px; padding:20px; font-size:48px; text-align:center; min-width:180px; margin: 20px 0; box-shadow:0 0 30px rgba(212,168,50,0.3); overflow:hidden; display:flex; justify-content:center; gap:15px;">
         <div id="slot-reel-1" class="reel">❓</div>
         <div id="slot-reel-2" class="reel">❓</div>
         <div id="slot-reel-3" class="reel">❓</div>
     </div>
     <div class="msg-sub" id="slot-result" style="color:var(--accent); font-weight:bold; height:20px;"></div>
-    <button class="msg-btn" id="slot-spin-btn">Tirar Rodillos (<span id="slot-spins">0</span>)</button>
-    <button class="msg-btn" id="slot-exit-btn" style="display:none; background:var(--surface2); color:var(--text);">Continuar</button>
+    <button class="msg-btn" id="slot-spin-btn"><span data-i18n="slot_spin">Tirar Rodillos</span> (<span id="slot-spins">0</span>)</button>
+    <button class="msg-btn" id="slot-exit-btn" data-i18n="btn_continue" style="display:none; background:var(--surface2); color:var(--text);">Continuar</button>
   </div>
 
   <div id="mission-reward-overlay" class="overlay" style="z-index: 53;">
-      <div class="msg-title" style="color:var(--accent2);">¡Misión Cumplida!</div>
-      <div class="msg-sub" id="mr-sub">Elige 1 palo nuevo para tu bolsa.</div>
+      <div class="msg-title" data-i18n="mr_title" style="color:var(--accent2);">¡Misión Cumplida!</div>
+      <div class="msg-sub" id="mr-sub" data-i18n="mr_pick">Elige 1 palo nuevo para tu bolsa.</div>
       <div id="mr-pick-cards" style="display:flex; gap:12px; justify-content:center; margin: 20px 0;"></div>
       <div id="mr-extra-rewards" style="display:flex; gap:12px; justify-content:center; margin-bottom: 20px;"></div>
       <button class="msg-btn" id="mr-btn" disabled>Aceptar</button>
   </div>
 
   <div id="softlock-overlay" class="overlay" style="z-index: 45;">
-    <div class="msg-title" style="font-size: 28px;">Sin Palos</div>
-    <div class="msg-sub">No tienes palos para golpear. Selecciona cartas para devolver al mazo y robar nuevas.</div>
+    <div class="msg-title" data-i18n="softlock_title" style="font-size: 28px;">Sin Palos</div>
+    <div class="msg-sub" data-i18n="softlock_sub">No tienes palos para golpear. Selecciona cartas para devolver al mazo y robar nuevas.</div>
     <div id="softlock-cards" style="display:flex; gap:6px; justify-content:center; margin: 15px 0;"></div>
-    <button class="msg-btn" id="softlock-btn" disabled>Barajar y Robar</button>
+    <button class="msg-btn" id="softlock-btn" data-i18n="softlock_btn" disabled>Barajar y Robar</button>
   </div>
 
   <div id="reward-overlay" class="overlay" style="z-index: 50;">
-    <div class="msg-title" id="reward-title">¡Recompensa!</div>
-    <div class="msg-sub" id="reward-sub">Objetos añadidos a tu mazo/inventario.</div>
+    <div class="msg-title" id="reward-title" data-i18n="reward_title">¡Recompensa!</div>
+    <div class="msg-sub" id="reward-sub" data-i18n="reward_sub">Objetos añadidos a tu mazo/inventario.</div>
     <div id="reward-cards" style="display:flex; gap:8px; justify-content:center; margin: 20px 0;"></div>
-    <button class="msg-btn" id="reward-btn">Aceptar</button>
+    <button class="msg-btn" id="reward-btn" data-i18n="btn_accept">Aceptar</button>
   </div>
 
   <div id="pick-reward-overlay" class="overlay" style="z-index: 51;">
     <div class="msg-title" id="pick-title">¡Birdie!</div>
     <div class="msg-sub" id="pick-sub">Elige tu recompensa.</div>
     <div id="pick-cards" style="display:flex; gap:12px; justify-content:center; margin: 20px 0;"></div>
-    <button class="msg-btn" id="pick-btn" disabled>Continuar</button>
+    <button class="msg-btn" id="pick-btn" data-i18n="pick_continue" disabled>Continuar</button>
   </div>
 
   <div id="shop-overlay" class="overlay" style="z-index: 55;">
-    <div class="msg-title" style="color:var(--accent2);">Tienda</div>
-    <div class="msg-sub">Monedas: <span id="shop-money" style="color:var(--accent2); font-weight:bold; font-size:16px;">0</span> 🪙<br>Palos en bolsa: <span id="shop-total-cards" style="font-weight:bold; color:var(--text);">0</span></div>
+    <div class="msg-title" data-i18n="shop_title" style="color:var(--accent2);">Tienda</div>
+    <div class="msg-sub"><span data-i18n="shop_money">Monedas:</span> <span id="shop-money" style="color:var(--accent2); font-weight:bold; font-size:16px;">0</span> <span id="shop-money-icon" style="display:inline-block; vertical-align:middle;"></span><br><span data-i18n="shop_in_bag">Palos en bolsa:</span> <span id="shop-total-cards" style="font-weight:bold; color:var(--text);">0</span></div>
     <div id="shop-grid" style="display:flex; flex-wrap:wrap; gap:14px 10px; justify-content:center; max-width:800px; max-height:40vh; overflow-y:auto; overflow-x:hidden; padding:20px 10px; align-content:flex-start; margin-top:10px;"></div>
     <div class="shop-checkout" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:800px; border-top:1px dashed var(--border); padding-top:15px; margin-top:10px;">
-        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); text-align:left;">Total<br><span id="shop-cost" style="font-size:24px; font-weight:bold; color:var(--text); font-family:'DM Serif Display',serif;">0</span> <span style="font-size:14px;">🪙</span></div>
-        <div style="display:flex; gap:10px;"><button class="msg-btn" id="shop-exit-btn" style="background:var(--surface2); color:var(--text); margin-top:0;">Salir Tienda</button><button class="msg-btn" id="shop-buy-btn" style="margin-top:0;" disabled>Comprar</button></div>
+        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); text-align:left;"><span data-i18n="shop_total">Total</span><br><span id="shop-cost" style="font-size:24px; font-weight:bold; color:var(--text); font-family:'DM Serif Display',serif;">0</span> <span id="shop-cost-icon" style="font-size:14px; display:inline-block; vertical-align:middle;"></span></div>
+        <div style="display:flex; gap:10px;"><button class="msg-btn" id="shop-exit-btn" data-i18n="shop_exit" style="background:var(--surface2); color:var(--text); margin-top:0;">Salir Tienda</button><button class="msg-btn" id="shop-buy-btn" data-i18n="shop_buy" style="margin-top:0;" disabled>Comprar</button></div>
     </div>
   </div>
 
   <div id="gameover-overlay" class="overlay" style="z-index: 60;">
-    <div class="msg-title" style="color:var(--danger);">Bolsa Vacía</div>
-    <div class="msg-sub">No te quedan palos en la mano ni cartas en el mazo.</div>
-    <button class="msg-btn" onclick="location.reload()">Volver al Inicio</button>
+    <div class="msg-title" data-i18n="gameover_title" style="color:var(--danger);">Bolsa Vacía</div>
+    <div class="msg-sub" data-i18n="gameover_sub">No te quedan palos en la mano ni cartas en el mazo.</div>
+    <button class="msg-btn" data-i18n="gameover_btn" onclick="location.reload()">Volver al Inicio</button>
+  </div>
+
+  <!-- Legal Modals -->
+  <div id="legal-consent-overlay" class="overlay" style="z-index: 99; display: none;">
+    <div class="settings-panel" style="max-height: 85vh; overflow-y: auto;">
+      <div class="msg-title" style="font-size: 28px;">Tu Privacidad</div>
+      <div id="legal-content-gdpr" style="font-size: 14px; line-height: 1.6; margin: 20px 0; color: var(--text);">
+        <!-- Inserted by legal.js -->
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 20px; flex-direction: column;">
+        <button class="msg-btn" id="legal-accept-btn" style="margin-top: 0; background: var(--accent);">Aceptar y Continuar</button>
+        <button class="msg-btn" id="legal-decline-btn" style="margin-top: 0; background: var(--surface2); color: var(--text);">Rechazar Publicidad</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="legal-modal-overlay" class="overlay" style="z-index: 98; display: none;">
+    <div class="settings-panel" style="max-height: 85vh; overflow-y: auto;">
+      <button style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text); font-size: 28px; cursor: pointer;" id="legal-modal-close">&times;</button>
+      <div id="legal-modal-content" style="font-size: 14px; line-height: 1.8; color: var(--text);">
+        <!-- Inserted by settings panel -->
+      </div>
+    </div>
   </div>
 </div>
-<script src="audio.js"></script>
-<script src="golfers.js"></script> <script src="data.js"></script>
-<script src="drawing.js"></script>
-<script src="cards.js"></script>
-<script src="core.js"></script>
+
+<!-- Cordova for Android -->
+<script src="cordova.js"></script>
+
+<!-- Game Scripts -->
+<script src="src/i18n.js"></script>
+<script src="assets/icons-data.js"></script>
+<script src="assets/legal.js"></script>
+<script src="assets/admob.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/golfers.js"></script>
+<script src="src/data.js"></script>
+<script src="src/drawing.js"></script>
+<script src="src/cards.js"></script>
+<script src="src/core.js"></script>
 </body>
 </html>

@@ -2,6 +2,11 @@
  * DECK GOLF - Lógica de Cartas y Construcción de Mazo
  */
 
+function cardIcon(c) {
+  if (c && c.iconKey) return getIcon(c.iconKey);
+  return (c && c.icon) || '❓';
+}
+
 function getUIAdjustedDist(baseDist) {
     if (!state.golfer) return baseDist;
     let m = 1.0;
@@ -35,7 +40,7 @@ function renderUpgrades() {
         
         const btn = document.createElement('div'); 
         btn.className = 'upgrade-btn' + (u.active ? ' active' : '') + (u.uses === 0 ? ' empty' : '');
-        btn.innerHTML = `${u.icon}<div class="upgrade-uses">${u.uses}</div>`;
+        btn.innerHTML = `${cardIcon(u)}<div class="upgrade-uses">${u.uses}</div>`;
         btn.onclick = () => { 
             if(state.phase !== 'card_select' || u.uses === 0) return; 
             u.active = !u.active; 
@@ -64,7 +69,7 @@ function drawCardsToHand() {
   while(state.hand.length < 5) { if(!state.drawPile.length) break; state.hand.push(state.drawPile.pop()); }
   
   if(sHP && ePI === -1){ 
-      let p = {baseId:'putt', name:'Putt', dist:pD, icon:ICONS.club_putt, type:'club', isPutt:true};
+      let p = {baseId:'putt', name:'Putt', dist:pD, icon:ICONS.club_putt, iconKey:'putt', type:'club', isPutt:true};
       state.hand.push(cloneCard(p)); 
   } else if (sHP && ePI !== -1) {
       state.hand[ePI].dist = pD;
@@ -92,7 +97,7 @@ function renderCards() {
     if(d) div.style.cssText='opacity:0.3;pointer-events:none;';
     
     const displayDist = getUIAdjustedDist(c.dist);
-    div.innerHTML=`<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${displayDist}m</div>`;
+    div.innerHTML=`<span class="card-type">${t('type_club')}</span><div class="card-icon">${cardIcon(c)}</div><div class="card-name">${c.name}</div><div class="card-dist">~${displayDist}m</div>`;
     
     div.onclick=() => { 
         if(state.phase!=='card_select'||d) return; 
@@ -129,7 +134,7 @@ function showDeckBuilder() {
         const tGolfers = document.createElement('div');
         tGolfers.className = 'db-title';
         tGolfers.style.marginTop = '45px';
-        tGolfers.textContent = 'Selecciona tu Jugador';
+        tGolfers.textContent = t('db_pick_golfer');
         step1Div.appendChild(tGolfers);
 
         const cGolfers = document.createElement('div');
@@ -142,18 +147,18 @@ function showDeckBuilder() {
                 const isSelected = state.golfer ? state.golfer.id === g.id : i === 0;
                 div.className = 'golfer-card' + (isSelected ? ' selected' : '');
                 let colorClass = i === 1 ? 'g-color-2' : (i === 2 ? 'g-color-3' : '');
-                let diffClass = g.difficulty === 'Fácil' ? 'diff-Facil' : (g.difficulty === 'Normal' ? 'diff-Normal' : 'diff-Dificil');
+                let diffClass = g.diffKey === 'easy' ? 'diff-Facil' : (g.diffKey === 'normal' ? 'diff-Normal' : 'diff-Dificil');
                 div.innerHTML = `
-                    <div class="card-badge" style="display:${isSelected ? 'flex' : 'none'}; position:absolute; top:-6px; left:-6px; background:var(--accent2); color:#000; font-size:10px; font-weight:bold; width:20px; height:20px; border-radius:10px; align-items:center; justify-content:center; z-index:2;">✔</div>
-                    <div class="golfer-icon ${colorClass}">${ICONS.golfer}</div>
+                    <div class="card-badge" style="display:${isSelected ? 'flex' : 'none'}; position:absolute; top:-6px; left:-6px; background:var(--accent2); color:#000; font-size:10px; font-weight:bold; width:20px; height:20px; border-radius:10px; align-items:center; justify-content:center; z-index:2;">${getIcon('check')}</div>
+                    <div class="golfer-icon ${colorClass}" style="font-size:32px">${getIcon('golfer')}</div>
                     <div style="font-size:14px; color:#fff; margin-bottom:8px; letter-spacing:0.12em; text-transform:uppercase; font-weight:bold;">${g.name}</div>
                     <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                        <div class="stat-row"><span>Recto</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.straight/5)*100}%"></div></div></div>
-                        <div class="stat-row"><span>Fuerza</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.power/5)*100}%"></div></div></div>
-                        <div class="stat-row"><span>Control</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.control/5)*100}%"></div></div></div>
+                        <div class="stat-row"><span>${t('stat_straight')}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.straight/5)*100}%"></div></div></div>
+                        <div class="stat-row"><span>${t('stat_power')}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.power/5)*100}%"></div></div></div>
+                        <div class="stat-row"><span>${t('stat_control')}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${(g.stats.control/5)*100}%"></div></div></div>
                     </div>
-                    <div class="golfer-diff ${diffClass}">${g.difficulty}</div>
-                    <div class="card-tooltip">${g.desc}</div>
+                    <div class="golfer-diff ${diffClass}">${t('diff_'+g.diffKey)}</div>
+                    <div class="card-tooltip">${t(g.descKey)}</div>
                 `;
                 div.onclick = () => {
                     cGolfers.querySelectorAll('.golfer-card').forEach(x => { 
@@ -190,7 +195,7 @@ function showDeckBuilder() {
                 cGolfers.appendChild(div);
             });
         }
-        btn.textContent = 'Confirmar Jugador';
+        btn.textContent = t('db_confirm_golfer');
         btn.disabled = !state.golfer;
         btn.onclick = () => {
             step1Div.style.display = 'none';
@@ -203,11 +208,11 @@ function showDeckBuilder() {
         step2Div.innerHTML = '';
         counter.style.display = 'block';
         const maxU = (typeof MAX_UPGRADES !== 'undefined') ? MAX_UPGRADES : 2;
-        counter.textContent = `Mejoras: ${tU} / ${maxU}`;
+        counter.textContent = t('db_upgrades_counter',{n:tU, max:maxU});
 
         const tUpgrades = document.createElement('div');
         tUpgrades.className = 'db-title';
-        tUpgrades.textContent = 'Elige tus Mejoras';
+        tUpgrades.textContent = t('db_pick_upgrades');
         step2Div.appendChild(tUpgrades);
 
         const cUpgrades = document.createElement('div');
@@ -219,11 +224,11 @@ function showDeckBuilder() {
             const div = document.createElement('div'); 
             div.className = 'card upgrade-card' + (state.upgradesConfig[c.id] > 0 ? ' selected' : '');
             div.innerHTML = `
-                <div class="card-badge" style="display:${state.upgradesConfig[c.id] > 0 ? 'flex' : 'none'}">✔</div>
-                <div class="card-icon">${c.icon}</div>
+                <div class="card-badge" style="display:${state.upgradesConfig[c.id] > 0 ? 'flex' : 'none'}">${getIcon('check')}</div>
+                <div class="card-icon">${cardIcon(c)}</div>
                 <div class="card-name">${c.name}</div>
-                <div class="card-dist" style="font-size:12px; color:var(--text)">3 Usos</div>
-                ${c.desc ? `<div class="card-tooltip">${c.desc}</div>` : ''}
+                <div class="card-dist" style="font-size:12px; color:var(--text)">${t('db_uses')}</div>
+                ${c.desc ? `<div class="card-tooltip">${t('upg_'+c.id)}</div>` : ''}
             `;
             div.onclick = () => {
                 cUpgrades.querySelectorAll('.card').forEach(x => {
@@ -257,8 +262,8 @@ function showDeckBuilder() {
                 const n = state.upgradesConfig[c.id];
                 if (n === 1) { state.upgradesConfig[c.id] = 0; tU--; } else if (n === 0 && tU < maxU) { state.upgradesConfig[c.id] = 1; tU++; }
                 const badge = div.querySelector('.card-badge');
-                if (state.upgradesConfig[c.id] > 0) { div.classList.add('selected'); badge.style.display='flex'; badge.textContent='✔'; } else { div.classList.remove('selected'); badge.style.display='none'; }
-                counter.textContent = `Mejoras: ${tU} / ${maxU}`; 
+                if (state.upgradesConfig[c.id] > 0) { div.classList.add('selected'); badge.style.display='flex'; badge.innerHTML=getIcon('check'); } else { div.classList.remove('selected'); badge.style.display='none'; }
+                counter.textContent = t('db_upgrades_counter',{n:tU, max:maxU}); 
                 btn.disabled = (tU !== maxU);
             }; 
             cUpgrades.appendChild(div);
@@ -270,7 +275,7 @@ function showDeckBuilder() {
 
         const tClubs = document.createElement('div');
         tClubs.className = 'db-title muted';
-        tClubs.textContent = 'Tus Palos Base';
+        tClubs.textContent = t('db_base_clubs');
         step2Div.appendChild(tClubs);
 
         const cClubs = document.createElement('div');
@@ -283,12 +288,12 @@ function showDeckBuilder() {
                 div.className = 'card'; 
                 div.style.cssText = 'opacity:0.5; transform:scale(0.85); pointer-events:none; margin:-4px;';
                 const dDist = getUIAdjustedDist(c.dist);
-                div.innerHTML = `<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
+                div.innerHTML = `<span class="card-type">${t('type_club')}</span><div class="card-icon">${cardIcon(c)}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
                 cClubs.appendChild(div);
             });
         }
 
-        btn.textContent = 'Confirmar y Jugar';
+        btn.textContent = t('deck_confirm');
         btn.disabled = (tU !== maxU);
         btn.onclick = () => { overlay.style.display='none'; initDeck(); startHole(0); };
     }
@@ -300,7 +305,7 @@ function showSoftlockOverlay() {
   state.hand.forEach(x => {
     const dDist = getUIAdjustedDist(x.dist);
     const div=document.createElement('div'); div.className='card'; 
-    div.innerHTML=`<span class="card-type">Palo</span><div class="card-icon">${x.icon}</div><div class="card-name">${x.name}</div><div class="card-dist">~${dDist}m</div>`;
+    div.innerHTML=`<span class="card-type">${t('type_club')}</span><div class="card-icon">${cardIcon(x)}</div><div class="card-name">${x.name}</div><div class="card-dist">~${dDist}m</div>`;
     div.onclick=()=>{ if(s.has(x.uid)){s.delete(x.uid);div.classList.remove('to-return');}else{s.add(x.uid);div.classList.add('to-return');} b.disabled=!s.size; }; 
     c.appendChild(div);
   });
@@ -308,21 +313,21 @@ function showSoftlockOverlay() {
   b.onclick=()=>{ o.style.display='none'; state.hand.filter(x=>s.has(x.uid)).forEach(x=>state.drawPile.push(x)); state.hand=state.hand.filter(x=>!s.has(x.uid)); shuffle(state.drawPile); drawCardsToHand(); };
 }
 
-function grantReward(n, t, cb) {
-    $('reward-title').textContent=t; $('reward-cards').innerHTML='';
+function grantReward(n, title, cb) {
+    $('reward-title').textContent=title; $('reward-cards').innerHTML='';
     for(let i=0;i<n;i++){ 
         const c=cloneCard(CLUBS_POOL[Math.floor(Math.random()*CLUBS_POOL.length)]); state.drawPile.push(c); 
         const dDist = getUIAdjustedDist(c.dist);
         const d=document.createElement('div'); d.className='card'; 
-        d.innerHTML=`<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`; 
+        d.innerHTML=`<span class="card-type">${t('type_club')}</span><div class="card-icon">${cardIcon(c)}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
         $('reward-cards').appendChild(d); 
     }
     shuffle(state.drawPile); $('reward-overlay').style.display='flex'; $('reward-btn').onclick=()=>{ $('reward-overlay').style.display='none'; if(cb)cb(); };
 }
 
 function showPickReward(n, clubsOnly, cb) {
-    $('pick-title').textContent=clubsOnly?"¡Recompensa de Misión!":(n>1?"¡Eagle o Mejor!":"¡Birdie!"); 
-    $('pick-sub').textContent=`Elige ${n} palo de los 3.`; $('pick-cards').innerHTML=''; let pL=n; $('pick-btn').disabled=true;
+    $('pick-title').textContent=clubsOnly?t('pick_mission'):(n>1?t('pick_eagle'):t('pick_birdie'));
+    $('pick-sub').textContent=t('pick_sub',{n}); $('pick-cards').innerHTML=''; let pL=n; $('pick-btn').disabled=true;
     let pool = [...CLUBS_POOL];
     for(let i=0;i<3;i++){
         let c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
@@ -330,7 +335,7 @@ function showPickReward(n, clubsOnly, cb) {
         const d=document.createElement('div'); d.className='card face-down';
         const bD=document.createElement('div'); bD.style.cssText='font-size:30px;'; bD.textContent='❓';
         const fD=document.createElement('div'); fD.style.cssText='display:none;flex-direction:column;align-items:center;'; 
-        fD.innerHTML=`<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
+        fD.innerHTML=`<span class="card-type">${t('type_club')}</span><div class="card-icon">${cardIcon(c)}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
         d.append(bD, fD); let f=false;
         d.onclick=()=>{ if(!f&&pL>0){ f=true; pL--; d.classList.remove('face-down'); bD.style.display='none'; fD.style.display='flex'; state.drawPile.push(cloneCard(c)); if(!pL)$('pick-btn').disabled=false; } };
         $('pick-cards').appendChild(d);
@@ -344,7 +349,7 @@ function showMissionReward(mCount, cb) {
     $('mr-pick-cards').innerHTML = '';
     $('mr-extra-rewards').innerHTML = '';
     $('mr-btn').disabled = true;
-    $('mr-btn').textContent = "Aceptar Recompensa";
+    $('mr-btn').textContent = t('mr_accept');
 
     let pool = [...CLUBS_POOL];
     let selectedClub = null;
@@ -353,8 +358,8 @@ function showMissionReward(mCount, cb) {
         let c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
         const dDist = getUIAdjustedDist(c.dist);
         const d=document.createElement('div'); d.className='card';
-        d.innerHTML=`<span class="card-type">Palo</span><div class="card-icon">${c.icon}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
-        
+        d.innerHTML=`<span class="card-type">${t('type_club')}</span><div class="card-icon">${cardIcon(c)}</div><div class="card-name">${c.name}</div><div class="card-dist">~${dDist}m</div>`;
+
         d.onclick=()=>{
             Array.from($('mr-pick-cards').children).forEach(el => el.classList.remove('selected'));
             d.classList.add('selected');
@@ -367,7 +372,7 @@ function showMissionReward(mCount, cb) {
     if (mCount >= 2 && par >= 4) {
         let u = UPGRADES_POOL[Math.floor(Math.random()*UPGRADES_POOL.length)];
         const dU=document.createElement('div'); dU.className='card upgrade-card'; dU.style.pointerEvents='none';
-        dU.innerHTML=`<div class="card-badge" style="display:flex; background:var(--accent)">+1</div><span class="card-type">Mejora</span><div class="card-icon">${u.icon}</div><div class="card-name">${u.name}</div><div class="card-dist gold">Bonus</div>`;
+        dU.innerHTML=`<div class="card-badge" style="display:flex; background:var(--accent)">+1</div><span class="card-type">${t('type_upgrade')}</span><div class="card-icon">${cardIcon(u)}</div><div class="card-name">${u.name}</div><div class="card-dist gold">${t('bonus')}</div>`;
         $('mr-extra-rewards').appendChild(dU);
         state._tempRewardUpgrade = u;
     } else {
@@ -377,7 +382,7 @@ function showMissionReward(mCount, cb) {
     if (mCount >= 3 && par === 5) {
         let g = cloneCard(getRandomGem());
         const dG=document.createElement('div'); dG.className='card gem-card'; dG.style.pointerEvents='none';
-        dG.innerHTML=`<div class="card-badge" style="display:flex; background:var(--accent2)">+1</div><span class="card-type">Gema</span><div class="card-icon">${g.icon}</div><div class="card-name">${g.name}</div><div class="card-dist gold">${g.price}🪙</div>`;
+        dG.innerHTML=`<div class="card-badge" style="display:flex; background:var(--accent2)">+1</div><span class="card-type">${t('type_gem')}</span><div class="card-icon">${cardIcon(g)}</div><div class="card-name">${itemName(g)}</div><div class="card-dist gold">${g.price}${getIcon('coin')}</div>`;
         $('mr-extra-rewards').appendChild(dG);
         state._tempRewardGem = g;
     } else {
@@ -405,31 +410,32 @@ function grantSpecificUpgrade(u) {
 function showSlotMachine(spins, baseCash, cb) {
     const o = $('slot-overlay'), rls = [$('slot-reel-1'), $('slot-reel-2'), $('slot-reel-3')], btn = $('slot-spin-btn'), eBtn = $('slot-exit-btn'), res = $('slot-result');
     let sL = spins; $('slot-spins').textContent = sL; eBtn.style.display = 'none'; btn.style.display = 'block'; btn.disabled = false; 
-    state.money += baseCash; $('h-money').textContent = state.money; res.textContent = `¡Diana! +${baseCash} 🪙`; $('slot-sub').textContent = `¡Premio por puntería!`; rls.forEach(r => r.innerHTML = ICONS.question);
-    
-    const items = [ICONS.money, ICONS.club_iron, ICONS.gem_dia, ICONS.upg_power]; 
+    state.money += baseCash; $('h-money').textContent = state.money; res.innerHTML = tWithIcons('slot_bullseye',{v:baseCash}); $('slot-sub').textContent = t('slot_aim_prize'); rls.forEach(r => r.innerHTML = getIcon('question'));
+
+    const SLOT_COIN = 'coin', SLOT_IRON = 'iron', SLOT_GEM = 'diamond', SLOT_UPG = 'power';
+    const slotKeys = [SLOT_COIN, SLOT_IRON, SLOT_GEM, SLOT_UPG];
     let sI; o.style.display = 'flex';
-    
+
     btn.onclick = () => {
-        if(sL <= 0) return; sL--; $('slot-spins').textContent = sL; btn.disabled = true; $('slot-machine').classList.add('slot-spinning'); res.textContent = '...Girando...';
+        if(sL <= 0) return; sL--; $('slot-spins').textContent = sL; btn.disabled = true; $('slot-machine').classList.add('slot-spinning'); res.textContent = t('slot_spinning');
         if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('slot');
-        let ticks = 0; sI = setInterval(() => { rls.forEach(r => r.innerHTML = items[ticks % items.length]); ticks++; if(typeof AudioEngine!=='undefined') AudioEngine.playSFX('tick'); }, 100);
+        let ticks = 0; sI = setInterval(() => { rls.forEach(r => r.innerHTML = getIcon(slotKeys[ticks % slotKeys.length])); ticks++; if(typeof AudioEngine!=='undefined') AudioEngine.playSFX('tick'); }, 100);
         setTimeout(() => {
             clearInterval(sI); $('slot-machine').classList.remove('slot-spinning');
             if(typeof AudioEngine!=='undefined') { AudioEngine.stopBGM(); AudioEngine.playSFX('slot_stop'); }
             let r1, r2, r3;
-            if (getTotalClubsInDeck() < 8 && Math.random() < 0.8) { r1 = r2 = r3 = ICONS.club_iron; } 
-            else if (Math.random() < 0.35) { let w = items[Math.floor(Math.random()*items.length)]; r1 = r2 = r3 = w; } 
-            else { r1 = items[Math.floor(Math.random()*items.length)]; r2 = items[Math.floor(Math.random()*items.length)]; r3 = items[Math.floor(Math.random()*items.length)]; if (r1 === r2 && r2 === r3) r3 = items[(items.indexOf(r3)+1)%items.length]; }
-            rls[0].innerHTML = r1; rls[1].innerHTML = r2; rls[2].innerHTML = r3;
-            
+            if (getTotalClubsInDeck() < 8 && Math.random() < 0.8) { r1 = r2 = r3 = SLOT_IRON; }
+            else if (Math.random() < 0.35) { let w = slotKeys[Math.floor(Math.random()*slotKeys.length)]; r1 = r2 = r3 = w; }
+            else { r1 = slotKeys[Math.floor(Math.random()*slotKeys.length)]; r2 = slotKeys[Math.floor(Math.random()*slotKeys.length)]; r3 = slotKeys[Math.floor(Math.random()*slotKeys.length)]; if (r1 === r2 && r2 === r3) r3 = slotKeys[(slotKeys.indexOf(r3)+1)%slotKeys.length]; }
+            rls[0].innerHTML = getIcon(r1); rls[1].innerHTML = getIcon(r2); rls[2].innerHTML = getIcon(r3);
+
             if (r1 === r2 && r2 === r3) {
-                if(r1 === ICONS.money) { let m = [50,100][Math.floor(Math.random()*2)]; state.money += m; $('h-money').textContent = state.money; res.textContent = `¡LÍNEA! +${m} 🪙`; }
-                else if(r1 === ICONS.club_iron) { const c=cloneCard(CLUBS_POOL[Math.floor(Math.random()*CLUBS_POOL.length)]); state.drawPile.push(c); res.textContent = `¡LÍNEA! Palo: ${c.name}`; }
-                else if(r1 === ICONS.gem_dia) { const g=cloneCard(getRandomGem()); state.gems.push(g); res.textContent = `¡LÍNEA! Gema: ${g.name}`; }
-                else if(r1 === ICONS.upg_power) { let u=UPGRADES_POOL[Math.floor(Math.random()*UPGRADES_POOL.length)]; grantSpecificUpgrade(u); res.textContent = `¡LÍNEA! Mejora: ${u.name}`; }
+                if(r1 === SLOT_COIN) { let m = [50,100][Math.floor(Math.random()*2)]; state.money += m; $('h-money').textContent = state.money; res.innerHTML = tWithIcons('slot_line_money',{v:m}); }
+                else if(r1 === SLOT_IRON) { const c=cloneCard(CLUBS_POOL[Math.floor(Math.random()*CLUBS_POOL.length)]); state.drawPile.push(c); res.textContent = t('slot_line_club',{v:c.name}); }
+                else if(r1 === SLOT_GEM) { const g=cloneCard(getRandomGem()); state.gems.push(g); res.textContent = t('slot_line_gem',{v:itemName(g)}); }
+                else if(r1 === SLOT_UPG) { let u=UPGRADES_POOL[Math.floor(Math.random()*UPGRADES_POOL.length)]; grantSpecificUpgrade(u); res.textContent = t('slot_line_upg',{v:u.name}); }
                 if(typeof AudioEngine!=='undefined') setTimeout(()=>AudioEngine.playSFX('slot_win'), 200);
-            } else { res.textContent = 'Sin premio extra.'; if(typeof AudioEngine!=='undefined') setTimeout(()=>AudioEngine.playSFX('slot_lose'), 200); }
+            } else { res.textContent = t('slot_no_prize'); if(typeof AudioEngine!=='undefined') setTimeout(()=>AudioEngine.playSFX('slot_lose'), 200); }
             if(sL > 0) btn.disabled = false; else { btn.style.display = 'none'; eBtn.style.display = 'block'; }
         }, 1500);
     };
@@ -437,8 +443,11 @@ function showSlotMachine(spins, baseCash, cb) {
 }
 
 function showShop(callback) {
-    const overlay = $('shop-overlay'); $('shop-money').textContent = state.money; const grid = $('shop-grid');
-    grid.innerHTML = '<div style="width:100%;font-weight:bold;color:var(--text);margin-bottom:5px;text-align:center;">OFERTAS</div><div id="shop-buy-area" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%;"></div><div style="width:100%;font-weight:bold;color:var(--text);margin-top:15px;margin-bottom:5px;text-align:center;">VENDER GEMAS Y PALOS</div><div id="shop-sell-area" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%;"></div>';
+    const overlay = $('shop-overlay'); $('shop-money').textContent = state.money;
+    const moneyIcon = $('shop-money-icon'); if(moneyIcon) moneyIcon.innerHTML = getIcon('coin');
+    const costIcon = $('shop-cost-icon'); if(costIcon) costIcon.innerHTML = getIcon('coin');
+    const grid = $('shop-grid');
+    grid.innerHTML = `<div style="width:100%;font-weight:bold;color:var(--text);margin-bottom:5px;text-align:center;">${t('shop_offers')}</div><div id="shop-buy-area" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%;"></div><div style="width:100%;font-weight:bold;color:var(--text);margin-top:15px;margin-bottom:5px;text-align:center;">${t('shop_sell')}</div><div id="shop-sell-area" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%;"></div>`;
     const buyArea = $('shop-buy-area'), sellArea = $('shop-sell-area'), btnBuy = $('shop-buy-btn'), costSpan = $('shop-cost'), cardsSpan = $('shop-total-cards');
     let selectedItems = new Set(), shopCards = [];
 
@@ -459,12 +468,12 @@ function showShop(callback) {
     function renderSellArea() {
         sellArea.innerHTML = ''; 
         let myItems = [...state.gems, ...state.hand.filter(c=>!c.isPutt), ...state.drawPile];
-        if(myItems.length === 0) sellArea.innerHTML = '<span style="color:var(--text-muted);font-size:11px;">No tienes objetos para vender.</span>';
+        if(myItems.length === 0) sellArea.innerHTML = `<span style="color:var(--text-muted);font-size:11px;">${t('shop_nothing')}</span>`;
         myItems.forEach(b => {
             const isGem = b.type === 'gem'; const d = document.createElement('div'); d.className = 'card' + (isGem?' gem-card':'');
             const dPrice = isGem ? b.price : 40;
             const dDist = isGem ? "" : `~${getUIAdjustedDist(b.dist)}m`;
-            d.innerHTML = `<span class="card-type">${isGem?'Gema':'Palo'}</span><div class="card-icon">${b.icon}</div><div class="card-name">${b.name}</div><div class="card-dist gold">${isGem?b.price:40}🪙</div>`;
+            d.innerHTML = `<span class="card-type">${isGem?t('type_gem'):t('type_club')}</span><div class="card-icon">${cardIcon(b)}</div><div class="card-name">${itemName(b)}</div><div class="card-dist gold">${isGem?b.price:40}${getIcon('coin')}</div>`;
             d.onclick = () => {
                 state.money += dPrice; $('h-money').textContent=state.money;
                 if(isGem) { state.gems.splice(state.gems.findIndex(x=>x.uid===b.uid), 1); } 
@@ -477,7 +486,7 @@ function showShop(callback) {
     shopCards.forEach(x => {
         const d=document.createElement('div'); d.className='card';
         const dDist = getUIAdjustedDist(x.t.dist);
-        d.innerHTML=`<div class="shop-price">${x.p} 🪙</div><span class="card-type">Palo</span><div class="card-icon">${x.t.icon}</div><div class="card-name">${x.t.name}</div><div class="card-dist">~${dDist}m</div>${x.discount?`<div style="position:absolute;bottom:-10px;background:var(--danger);color:#fff;font-size:9px;padding:2px 4px;border-radius:4px;z-index:5;">${x.discount} (<del>${x.oP}</del>)</div>`:''}`;
+        d.innerHTML=`<div class="shop-price">${x.p}${getIcon('coin')}</div><span class="card-type">${t('type_club')}</span><div class="card-icon">${cardIcon(x.t)}</div><div class="card-name">${x.t.name}</div><div class="card-dist">~${dDist}m</div>${x.discount?`<div style="position:absolute;bottom:-10px;background:var(--danger);color:#fff;font-size:9px;padding:2px 4px;border-radius:4px;z-index:5;">${x.discount} (<del>${x.oP}</del>)</div>`:''}`;
         d.onclick=() => { if(state.money>=x.p){ if(selectedItems.has(x)){selectedItems.delete(x);d.classList.remove('shop-selected');}else{selectedItems.add(x);d.classList.add('shop-selected');} upd(); } }; 
         buyArea.appendChild(d);
     });
