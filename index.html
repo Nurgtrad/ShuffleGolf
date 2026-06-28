@@ -80,6 +80,7 @@
       <button data-lang="en">EN</button>
     </div>
     <div class="warning" id="msg-warn" data-i18n-html="menu_warning" style="display:none">⚠️ ADVERTENCIA<br>Refrescar el navegador borrará tu progreso y tu colección de cartas para siempre.</div>
+    <button class="msg-btn" id="continue-btn" data-i18n="btn_continue" style="display:none;">Continuar</button>
     <button class="msg-btn" id="msg-btn" data-i18n="menu_play">Jugar</button>
     <div id="version-text" style="margin-top:10px; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; display:none;">DECK GOLF by Javier A. Murillo  -  Ver. 1.2</div>
   </div>
@@ -213,5 +214,29 @@
 <script src="src/drawing.js"></script>
 <script src="src/cards.js"></script>
 <script src="src/core.js"></script>
+
+<!-- Bloquear zoom (doble-tap, pellizco, gestos) -->
+<script>
+(function(){
+  // Doble-tap zoom
+  var lastTouchEnd = 0;
+  document.addEventListener('touchend', function(e){
+    var now = Date.now();
+    if(now - lastTouchEnd <= 350){ e.preventDefault(); }
+    lastTouchEnd = now;
+  }, {passive:false});
+  // Doble-click (ratón / WebView)
+  document.addEventListener('dblclick', function(e){ e.preventDefault(); }, {passive:false});
+  // Pellizco multitáctil
+  document.addEventListener('touchmove', function(e){
+    if(e.touches && e.touches.length > 1){ e.preventDefault(); }
+  }, {passive:false});
+  // Gestos de Safari/iOS
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, {passive:false});
+  document.addEventListener('gesturechange', function(e){ e.preventDefault(); }, {passive:false});
+  // Ctrl + rueda (zoom de escritorio)
+  document.addEventListener('wheel', function(e){ if(e.ctrlKey){ e.preventDefault(); } }, {passive:false});
+})();
+</script>
 </body>
 </html>

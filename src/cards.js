@@ -165,7 +165,7 @@ function showDeckBuilder() {
                         x.classList.remove('selected', 'show-tooltip'); 
                         x.querySelector('.card-badge').style.display='none'; 
                         let t = x.querySelector('.card-tooltip');
-                        if(t) t.classList.remove('tooltip-right', 'tooltip-left');
+                        if(t) t.classList.remove('tooltip-right', 'tooltip-left', 'tooltip-below');
                     });
                     
                     div.classList.add('selected', 'show-tooltip'); 
@@ -174,7 +174,7 @@ function showDeckBuilder() {
 
                     const tooltip = div.querySelector('.card-tooltip');
                     if (tooltip) {
-                        tooltip.classList.remove('tooltip-right', 'tooltip-left');
+                        tooltip.classList.remove('tooltip-right', 'tooltip-left', 'tooltip-below');
                         
                         // Forzamos al navegador a recalcular el CSS en este milisegundo exacto
                         void tooltip.offsetWidth; 
@@ -186,6 +186,9 @@ function showDeckBuilder() {
                             tooltip.classList.add('tooltip-right');
                         } else if (tRect.left < gridRect.left) {
                             tooltip.classList.add('tooltip-left');
+                        }
+                        if (tRect.top < gridRect.top) {
+                            tooltip.classList.add('tooltip-below');
                         }
                     }
 
@@ -234,7 +237,7 @@ function showDeckBuilder() {
                 cUpgrades.querySelectorAll('.card').forEach(x => {
                     x.classList.remove('show-tooltip');
                     let t = x.querySelector('.card-tooltip');
-                    if(t) t.classList.remove('tooltip-right', 'tooltip-left');
+                    if(t) t.classList.remove('tooltip-right', 'tooltip-left', 'tooltip-below');
                 }); 
                 
                 if(c.desc) { 
@@ -243,7 +246,7 @@ function showDeckBuilder() {
 
                     const tooltip = div.querySelector('.card-tooltip');
                     if (tooltip) {
-                        tooltip.classList.remove('tooltip-right', 'tooltip-left');
+                        tooltip.classList.remove('tooltip-right', 'tooltip-left', 'tooltip-below');
                         
                         // Forzamos al navegador a recalcular el CSS
                         void tooltip.offsetWidth; 
@@ -255,6 +258,9 @@ function showDeckBuilder() {
                             tooltip.classList.add('tooltip-right');
                         } else if (tRect.left < gridRect.left) {
                             tooltip.classList.add('tooltip-left');
+                        }
+                        if (tRect.top < gridRect.top) {
+                            tooltip.classList.add('tooltip-below');
                         }
                     }
                 }

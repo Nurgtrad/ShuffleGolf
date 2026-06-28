@@ -201,7 +201,7 @@ function animateFlight(d, dev, c, dX, dY, pX, pY) {
     const e=ts-pS;
     if(aP==='air') {
       const t=Math.min(e/aD,1), ease=t<0.5?2*t*t:-1+(4-2*t)*t, arcT=Math.sin(t*Math.PI);
-      state.ball.x=sX+dX*(dPx*ease)+pX*(devPx*(ease*ease)); state.ball.y=sY+dY*(dPx*ease)+pY*(devPx*(ease*ease))-arcT*80*(d/200); state.ball.airR=5+(c.isPutt?0:arcT*(d>150?14:7));
+      state.ball.x=sX+dX*(dPx*ease)+pX*(devPx*(ease*ease)); state.ball.y=sY+dY*(dPx*ease)+pY*(devPx*(ease*ease))-(c.isPutt?0:arcT*80*(d/200)); state.ball.airR=5+(c.isPutt?0:arcT*(d>150?14:7));
       if(state.activeUpgrades.some(u=>u.id==='u_power'&&u.active)) addFire(state.ball.x,state.ball.y); if(state.activeUpgrades.some(u=>u.id==='u_heavy'&&u.active)) addRockTrail(state.ball.x,state.ball.y);
       state.ballAnim.trace.push({x:state.ball.x, y:state.ball.y}); if(state.ballAnim.trace.length>40) state.ballAnim.trace.shift();
       if(t>=1) { aP='roll'; pS=ts; state.ball.airR=5; if(typeof AudioEngine!=='undefined') AudioEngine.playSFX('bounce'); }
@@ -316,7 +316,7 @@ function endShot(iHE, fT) {
 
 function applyPenalty(t) {
     const hd=state.holeData; state.ballAnim=null; vfxList=[]; state.ball.x=state.prevPos.x; state.ball.y=state.prevPos.y; state.strokes++; state.distToHole=Math.hypot(state.ball.x-hd.holeX, state.ball.y-hd.holeY)/hd.scale; drawCourse(); drawBall(); drawUI(); resetMetersUI(); state.m_hz = true;
-    const m=$('msg-overlay'); $('logo-svg').style.display='none'; $('msg-title').textContent=t==='agua'?window.t('pen_water'):window.t('pen_ob'); $('msg-sub').textContent=window.t('pen_sub'); $('msg-btn').textContent=window.t('btn_continue'); m.style.display='flex';
+    const m=$('msg-overlay'); $('logo-svg').style.display='none'; if($('continue-btn')) $('continue-btn').style.display='none'; $('msg-title').textContent=t==='agua'?window.t('pen_water'):window.t('pen_ob'); $('msg-sub').textContent=window.t('pen_sub'); $('msg-btn').textContent=window.t('btn_continue'); m.style.display='flex';
     $('msg-btn').onclick=()=>{ m.style.display='none'; if(state.strokes>=hd.par+5) holeComplete(true); else finishTurn(state.currentTerrain); };
 }
 
@@ -336,13 +336,16 @@ function finishTurn(t) {
     updateReachDisplay(); 
 }
 
-function startHole(idx) {
+function startHole(idx, keepHole) {
   if(idx>17) return showScorecard(false);
   state.paths={fairway:null, semirough:null, rough:null, ob:null}; state.cachedPattern=null; state.ballAnim=null; vfxList=[];
   state.hole=idx; state.strokes=0; state.selectedClub=null; state.selectedBall=null; state.itemLocked=false; state.phase='card_select'; state.currentTerrain='tee'; state.shotTerrain='tee';
   state.m_hz=false; state.m_upgs=0; state.m_c200=false;
-  resizeCanvases(); state.holeData=generateHole(idx); state.ball={x:state.holeData.teeX, y:state.holeData.teeY, airR:5}; state.target={x:state.holeData.holeX, y:state.holeData.holeY}; state.distToHole=state.holeData.holeLength;
-  
+  resizeCanvases();
+  // keepHole=true (al CONTINUAR): reutiliza el hoyo guardado en vez de generar uno nuevo
+  if(!(keepHole && state.holeData)) state.holeData=generateHole(idx);
+  state.ball={x:state.holeData.teeX, y:state.holeData.teeY, airR:5}; state.target={x:state.holeData.holeX, y:state.holeData.holeY}; state.distToHole=state.holeData.holeLength;
+
   const hcpText = (state.handicaps && state.handicaps.length > state.hole) ? state.handicaps[state.hole] : '-';
   $('h-hole').innerHTML = `${state.hole+1}<div style="font-size:10px; color:var(--text-muted); font-family:'DM Mono',monospace; margin-top:-2px;">HCP ${hcpText}</div>`; 
   
@@ -354,6 +357,7 @@ function startHole(idx) {
   
   resetMetersUI(); autoSelectBestClub(); drawCourse(); drawBall(); drawUI(); updateShootBtnUI(); updateReachDisplay(); $('cards-row').style.pointerEvents='auto';
   if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('game');
+  if(typeof saveProgress==='function') saveProgress();
 }
 
 function holeComplete(max) {
@@ -369,8 +373,8 @@ function holeComplete(max) {
   let mDone = state.missions.filter(m=>m.done).length;
   let mTotal = state.missions.length;
 
-  const m=$('msg-overlay'); $('logo-svg').style.display='none';
-  
+  const m=$('msg-overlay'); $('logo-svg').style.display='none'; if($('continue-btn')) $('continue-btn').style.display='none';
+
   let baseTitle = max ? t('hole_limit') : (state.strokes===1 ? t('hole_in_one') : (sN||(d>0?'+'+d:d)));
   $('msg-title').textContent = baseTitle;
 
@@ -423,15 +427,35 @@ function showScorecard(mG) {
   state.scores.forEach((x,i)=>{ p+=x.par; s+=x.strokes; h+=`<div class="sc-row"><span>#${i+1}</span><span>${x.par}</span><span>${x.strokes}</span><span style="color:${x.diff<0?'var(--accent)':x.diff>0?'var(--danger)':'var(--text-muted)'}">${x.diff===0?'E':x.diff>0?'+'+x.diff:x.diff}</span></div>`; if(i===8&&!mG) h+=`<div class="sc-row total" style="color:var(--text-muted); border-top:1px dashed rgba(255,255,255,0.1)"><span>${t('sc_out')}</span><span>${p}</span><span>${s}</span><span></span></div>`; });
   h+=`<div class="sc-row total"><span>${mG?t('sc_out'):t('sc_total')}</span><span>${p}</span><span>${s}</span><span></span></div>`; $('score-table-wrap').innerHTML=h;
   $('score-btn').textContent=mG?t('btn_continue'):t('btn_newgame'); $('score-overlay').style.display='flex';
-  $('score-btn').onclick=()=>{ $('score-overlay').style.display='none'; if(mG) grantReward(3,t('reward_front9'),()=>startHole(9)); else location.reload(); };
+  $('score-btn').onclick=()=>{ $('score-overlay').style.display='none'; if(mG) grantReward(3,t('reward_front9'),()=>startHole(9)); else { if(typeof clearProgress==='function') clearProgress(); location.reload(); } };
 }
 
 if($('mute-btn')) { $('mute-btn').style.fontSize='18px'; $('mute-btn').innerHTML=getIcon('mute_on'); $('mute-btn').onclick=()=>{ if(typeof AudioEngine!=='undefined'){ const m=AudioEngine.toggleMute(); $('mute-btn').innerHTML=m?getIcon('mute_off'):getIcon('mute_on'); } }; }
 if($('volume-slider')) { $('volume-slider').oninput=(e)=>{ if(typeof AudioEngine!=='undefined') AudioEngine.setVolume(parseFloat(e.target.value)); }; }
 
 window.addEventListener('load', ()=>{
-  resizeCanvases(); $('msg-warn').style.display='block'; $('version-text').style.display='block'; if($('menu-lang-switch')) $('menu-lang-switch').style.display='flex';
-  $('msg-btn').onclick=()=>{ $('msg-overlay').style.display='none'; $('msg-warn').style.display='none'; $('version-text').style.display='none'; if($('menu-lang-switch')) $('menu-lang-switch').style.display='none'; if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); showDeckBuilder(); }
+  resizeCanvases(); $('version-text').style.display='block'; if($('menu-lang-switch')) $('menu-lang-switch').style.display='flex';
+  const hideMenu = ()=>{ $('msg-overlay').style.display='none'; $('version-text').style.display='none'; if($('menu-lang-switch')) $('menu-lang-switch').style.display='none'; if(typeof AudioEngine!=='undefined') AudioEngine.playBGM('menu'); };
+  if(typeof hasProgress==='function' && hasProgress()) {
+    $('continue-btn').style.display='';
+    $('msg-btn').setAttribute('data-i18n','btn_newgame'); $('msg-btn').textContent=t('btn_newgame');
+    $('continue-btn').onclick=()=>{
+      try {
+        if(loadProgress()){
+          hideMenu();
+          startHole(state.hole, true);
+          if(typeof renderUpgrades==='function') renderUpgrades();
+          $('h-money').textContent = state.money;
+        }
+      } catch(e) {
+        // Si el guardado está corrupto/incompatible, no bloquear: limpiar y empezar de nuevo
+        console.warn('Continue failed, starting new game:', e);
+        if(typeof clearProgress==='function') clearProgress();
+        hideMenu(); showDeckBuilder();
+      }
+    };
+  }
+  $('msg-btn').onclick=()=>{ if(typeof clearProgress==='function') clearProgress(); hideMenu(); showDeckBuilder(); }
   $('msg-overlay').style.display='flex';
 });
 

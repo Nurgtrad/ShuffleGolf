@@ -90,6 +90,37 @@ let state = {
   m_hz:false, m_upgs:0, m_c200:false 
 };
 
+// ---- Guardado de progreso (localStorage) ----
+const SAVE_KEY = 'shufflegolf_save_v1';
+function saveProgress() {
+  try {
+    const snap = {
+      golfer: state.golfer, upgradesConfig: state.upgradesConfig,
+      drawPile: state.drawPile, hand: state.hand, gems: state.gems,
+      activeUpgrades: state.activeUpgrades, money: state.money,
+      hole: state.hole, totalScore: state.totalScore,
+      scores: state.scores, handicaps: state.handicaps,
+      holeData: state.holeData
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
+  } catch(e) { console.warn('saveProgress failed', e); }
+}
+function hasProgress() { try { return !!localStorage.getItem(SAVE_KEY); } catch(e) { return false; } }
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY); if(!raw) return false;
+    Object.assign(state, JSON.parse(raw));
+    // Re-vincular el golfista al objeto real: los métodos (getControlMultiplier,
+    // getPowerMultiplier) se pierden al serializar a JSON y romperían el golpe.
+    if(state.golfer && typeof GOLFERS !== 'undefined') {
+      const full = GOLFERS.find(g => g.id === state.golfer.id);
+      if(full) state.golfer = full;
+    }
+    return true;
+  } catch(e) { console.warn('loadProgress failed', e); return false; }
+}
+function clearProgress() { try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
+
 const M_TYPES = [
   { id:'drive', n:(v)=>t('m_drive',{v}), c:(st)=>st.strokes===1 && st.dist>=st.m.v },
   { id:'prize', n:()=>t('m_prize'), c:(st)=>st.pzHit },
