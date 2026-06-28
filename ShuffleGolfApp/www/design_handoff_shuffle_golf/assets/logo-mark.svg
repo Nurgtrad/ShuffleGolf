@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" fill="none" role="img" aria-label="Shuffle Golf">
+  <defs>
+    
+    <linearGradient id="mpole" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e7ae3d"></stop><stop offset="50%" stop-color="#c98e1e"></stop><stop offset="100%" stop-color="#9a6c14"></stop>
+    </linearGradient>
+    <radialGradient id="mgrnd" cx="50%" cy="42%" r="62%">
+      <stop offset="0%" stop-color="#7ac93f"></stop><stop offset="70%" stop-color="#54a527"></stop><stop offset="100%" stop-color="#3d8118"></stop>
+    </radialGradient>
+    <radialGradient id="mball" cx="38%" cy="32%" r="72%">
+      <stop offset="0%" stop-color="#ffffff"></stop><stop offset="100%" stop-color="#d8dccf"></stop>
+    </radialGradient>
+    <radialGradient id="mredp" cx="30%" cy="30%" r="90%">
+      <stop offset="0%" stop-color="#e0503e"></stop><stop offset="100%" stop-color="#b62f23"></stop>
+    </radialGradient>
+  </defs>
+
+  <ellipse cx="180" cy="282" rx="150" ry="48" fill="url(#mgrnd)"></ellipse>
+  <ellipse cx="180" cy="282" rx="150" ry="48" fill="none" stroke="#2f6a14" stroke-width="3.5" opacity="0.5"></ellipse>
+  <g fill="#3f8516" opacity="0.55">
+    <path d="M70 272 l3 -10 3 10 z"></path><path d="M300 272 l3 -10 3 10 z"></path><path d="M120 312 l3 -9 3 9 z"></path><path d="M250 314 l3 -9 3 9 z"></path>
+  </g>
+  <ellipse cx="232" cy="278" rx="28" ry="11" fill="#1d3a0c"></ellipse>
+  <ellipse cx="232" cy="274" rx="28" ry="11" fill="#0e2207"></ellipse>
+
+  <line x1="212" y1="278" x2="212" y2="56" stroke="#fbfaf2" stroke-width="18" stroke-linecap="round"></line>
+  <line x1="212" y1="278" x2="212" y2="56" stroke="url(#mpole)" stroke-width="11" stroke-linecap="round"></line>
+  <circle cx="212" cy="56" r="12" fill="#fbfaf2"></circle>
+  <circle cx="212" cy="56" r="9" fill="url(#mpole)"></circle>
+
+  <path d="M217 70 C 262 77, 312 96, 330 112 C 312 124, 262 146, 217 152 Z" fill="#fbfaf2"></path>
+  <path d="M219 76 C 261 83, 305 100, 322 112 C 305 124, 261 142, 219 146 Z" fill="url(#mredp)"></path>
+  <text font-family="&#39;Luckiest Guy&#39;,&#39;Arial Black&#39;,sans-serif" x="264" y="128" font-size="44" fill="#fbfaf2" text-anchor="middle">18</text>
+
+  <ellipse cx="138" cy="306" rx="34" ry="11" fill="#000" opacity="0.2"></ellipse>
+  <circle cx="138" cy="284" r="33" fill="url(#mball)"></circle>
+  <circle cx="138" cy="284" r="33" fill="none" stroke="#bcc2b2" stroke-width="2.4"></circle>
+  <g fill="#c7cdbd">
+    <circle cx="127" cy="271" r="2.6"></circle><circle cx="140" cy="269" r="2.6"></circle><circle cx="151" cy="275" r="2.6"></circle>
+    <circle cx="122" cy="284" r="2.6"></circle><circle cx="135" cy="284" r="2.6"></circle><circle cx="148" cy="286" r="2.6"></circle>
+    <circle cx="128" cy="297" r="2.6"></circle><circle cx="141" cy="297" r="2.6"></circle>
+  </g>
+  <ellipse cx="127" cy="270" rx="8" ry="5" fill="#fff" opacity="0.7"></ellipse>
+</svg>

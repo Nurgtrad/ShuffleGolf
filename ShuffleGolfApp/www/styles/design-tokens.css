@@ -1,0 +1,291 @@
+/* ============================================================
+   SHUFFLE GOLF · Design System
+   "Country club at midnight" — a procedural golf card game.
+   Drop this file in and use the tokens / classes below.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,500&display=swap');
+
+:root {
+  /* ---- Core surfaces (warm green-black) ---- */
+  --sg-bg:        #0a0d08;   /* page background          */
+  --sg-bg-2:      #0e120b;   /* faint raised background  */
+  --sg-surface:   #141a10;   /* cards / panels           */
+  --sg-surface-2: #1b2215;   /* hover / nested panel     */
+  --sg-line:      rgba(170, 217, 118, 0.14); /* hairline border */
+  --sg-line-soft: rgba(255, 255, 255, 0.06);
+
+  /* ---- Brand accents ---- */
+  --sg-green:        #aad976;  /* primary — CTAs, titles, values  */
+  --sg-green-bright: #c2ec8e;  /* emphasised value / glow         */
+  --sg-green-deep:   #6f9e3f;  /* pressed / muted green           */
+  --sg-gold:         #e0b84d;  /* coins, prizes, "Prize Zone"     */
+  --sg-gold-deep:    #b8881f;
+  --sg-red:          #e36a6a;  /* difícil / danger / warnings     */
+  --sg-cyan:         #62c4e8;  /* tooltips / info                 */
+
+  /* ---- Text ---- */
+  --sg-text:      #d6e4c5;   /* primary text on dark      */
+  --sg-text-dim:  #8a9a7e;   /* secondary / labels        */
+  --sg-text-mute: #5f6c55;   /* tertiary / disabled       */
+  --sg-on-green:  #142008;   /* text on green button      */
+  --sg-on-gold:   #2a1e06;   /* text on gold chip         */
+
+  /* ---- Gem hues (faceted icons / rarity) ---- */
+  --sg-diamond: #bfeef2;
+  --sg-ruby:    #e1556b;
+  --sg-emerald: #4fc785;
+  --sg-topaz:   #e9b13e;
+  --sg-quartz:  #e7b6df;
+
+  /* ---- Type ---- */
+  --sg-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sg-mono:  'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* ---- Radii ---- */
+  --sg-r-sm: 4px;
+  --sg-r-md: 8px;
+  --sg-r-lg: 14px;
+  --sg-r-pill: 999px;
+
+  /* ---- Elevation / glow ---- */
+  --sg-shadow:      0 8px 28px rgba(0, 0, 0, 0.55);
+  --sg-glow-green:  0 0 0 1px var(--sg-green), 0 0 18px rgba(170, 217, 118, 0.35);
+  --sg-glow-cyan:   0 0 0 1px var(--sg-cyan), 0 0 18px rgba(98, 196, 232, 0.35);
+  --sg-glow-gold:   0 0 0 1px var(--sg-gold), 0 0 18px rgba(224, 184, 77, 0.30);
+
+  /* ---- Spacing scale ---- */
+  --sg-1: 4px;  --sg-2: 8px;  --sg-3: 12px; --sg-4: 16px;
+  --sg-5: 24px; --sg-6: 32px; --sg-7: 48px; --sg-8: 64px;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+.sg, body.sg {
+  background: var(--sg-bg);
+  color: var(--sg-text);
+  font-family: var(--sg-mono);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* subtle course vignette you can drop on any full-screen container */
+.sg-stage {
+  position: relative;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #11160d 0%, var(--sg-bg) 55%, #07090530 100%);
+  min-height: 100vh;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+.sg-display {                       /* Par · Vestuario */
+  font-family: var(--sg-serif);
+  font-weight: 500;
+  font-size: clamp(34px, 5vw, 56px);
+  line-height: 1.05;
+  color: var(--sg-green-bright);
+  letter-spacing: 0.01em;
+}
+.sg-display--gold { color: var(--sg-gold); }   /* Prize Zone */
+
+.sg-eyebrow {                       /* SELECCIONA TU JUGADOR */
+  font-family: var(--sg-mono);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sg-gold);
+}
+.sg-label {                         /* HOYO · PAR · GOLPES */
+  font-family: var(--sg-mono);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sg-text-dim);
+}
+.sg-value {                         /* the big number under a label */
+  font-family: var(--sg-mono);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--sg-green);
+}
+.sg-value--gold { color: var(--sg-gold); }
+.sg-body  { color: var(--sg-text-dim); }
+.sg-muted { color: var(--sg-text-mute); }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.sg-btn {
+  font-family: var(--sg-mono);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border: 0;
+  border-radius: var(--sg-r-md);
+  padding: 14px 26px;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .15s ease, background .15s ease;
+}
+.sg-btn:active { transform: translateY(1px); }
+
+.sg-btn--primary {                  /* CONTINUAR / PLAY / CONFIRMAR */
+  background: var(--sg-green);
+  color: var(--sg-on-green);
+}
+.sg-btn--primary:hover {
+  background: var(--sg-green-bright);
+  box-shadow: 0 0 22px rgba(170, 217, 118, 0.4);
+}
+.sg-btn--ghost {                    /* TIRAR RODILLOS · secondary */
+  background: transparent;
+  color: var(--sg-green);
+  box-shadow: inset 0 0 0 1px var(--sg-line);
+}
+.sg-btn--ghost:hover { box-shadow: inset 0 0 0 1px var(--sg-green); }
+
+.sg-btn--danger { background: transparent; color: var(--sg-red);
+                  box-shadow: inset 0 0 0 1px rgba(227,106,106,.4); }
+
+/* difficulty pill inside player cards */
+.sg-pill {
+  font-family: var(--sg-mono); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 10px 0; width: 100%; text-align: center;
+  border-radius: var(--sg-r-sm);
+  background: var(--sg-bg-2);
+  box-shadow: inset 0 0 0 1px var(--sg-line-soft);
+}
+.sg-pill--easy   { color: var(--sg-green); }
+.sg-pill--normal { color: var(--sg-gold); }
+.sg-pill--hard   { color: var(--sg-red); }
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.sg-card {
+  background: var(--sg-surface);
+  border-radius: var(--sg-r-lg);
+  box-shadow: inset 0 0 0 1px var(--sg-line-soft), var(--sg-shadow);
+  padding: var(--sg-5);
+}
+.sg-card--selected   { box-shadow: var(--sg-glow-green); }
+.sg-card--selected-c { box-shadow: var(--sg-glow-cyan); }
+
+/* club / "PALO" card */
+.sg-palo {
+  position: relative;
+  background: var(--sg-bg-2);
+  border-radius: var(--sg-r-md);
+  box-shadow: inset 0 0 0 1px var(--sg-line-soft);
+  padding: 14px 12px 12px;
+  width: 92px;
+  text-align: center;
+}
+.sg-palo.is-active { box-shadow: var(--sg-glow-green); }
+.sg-palo__tag {                      /* tiny "PALO" top-right */
+  position: absolute; top: 8px; right: 10px;
+  font-family: var(--sg-mono); font-size: 9px; letter-spacing: .18em;
+  color: var(--sg-text-mute);
+}
+.sg-palo__icon { width: 30px; height: 30px; margin: 14px auto 8px; }
+.sg-palo__name {
+  font-family: var(--sg-mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--sg-text-dim);
+}
+.sg-palo__dist {
+  font-family: var(--sg-mono); font-weight: 700; font-size: 18px;
+  color: var(--sg-green); margin-top: 2px;
+}
+
+/* draw / "MAZO" deck card */
+.sg-mazo {
+  width: 56px; height: 78px; border-radius: var(--sg-r-md);
+  border: 1px dashed var(--sg-line); display: grid; place-items: center;
+  font-family: var(--sg-mono); color: var(--sg-text-dim);
+}
+
+/* ============================================================
+   TOOLTIP (gold / cyan callout with pointer)
+   ============================================================ */
+.sg-tooltip {
+  position: relative;
+  font-family: var(--sg-mono); font-weight: 700; font-size: 13px;
+  line-height: 1.35; text-align: center;
+  padding: 10px 14px; border-radius: var(--sg-r-md);
+  background: var(--sg-cyan); color: #0a1a20;
+}
+.sg-tooltip--gold { background: var(--sg-gold); color: var(--sg-on-gold); }
+.sg-tooltip::after {                 /* downward pointer */
+  content: ""; position: absolute; bottom: -7px; left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: var(--sg-cyan);
+  border-bottom: 0;
+}
+.sg-tooltip--gold::after { border-top-color: var(--sg-gold); }
+
+/* ============================================================
+   BADGES / CHIPS  (power-up counters, coin chip)
+   ============================================================ */
+.sg-badge {
+  position: relative; width: 54px; height: 54px;
+  border-radius: var(--sg-r-md);
+  background: var(--sg-surface);
+  box-shadow: inset 0 0 0 1px var(--sg-line);
+  display: grid; place-items: center;
+}
+.sg-badge__count {
+  position: absolute; right: -6px; bottom: -6px;
+  min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: var(--sg-r-pill);
+  background: var(--sg-bg); color: var(--sg-text);
+  box-shadow: inset 0 0 0 1px var(--sg-line);
+  font-family: var(--sg-mono); font-size: 11px; font-weight: 700;
+  display: grid; place-items: center;
+}
+.sg-chip {                           /* "Ganaste 100 ●" coin chip */
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--sg-mono); color: var(--sg-text-dim);
+}
+
+/* warning banner (refresh erases progress) */
+.sg-warn {
+  font-family: var(--sg-mono); color: var(--sg-red);
+  text-transform: uppercase; letter-spacing: .08em; font-size: 13px;
+  text-align: center; padding: 14px 18px; border-radius: var(--sg-r-md);
+  background: rgba(227, 106, 106, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(227, 106, 106, 0.45);
+}
+
+/* ============================================================
+   HUD top-bar stat
+   ============================================================ */
+.sg-stat { text-align: center; }
+.sg-stat .sg-label { display: block; margin-bottom: 4px; }
+
+/* ============================================================
+   STAT BAR (RECTO / FUERZA / CONTROL meters)
+   ============================================================ */
+.sg-meter { height: 7px; border-radius: var(--sg-r-pill);
+            background: var(--sg-bg-2); overflow: hidden; }
+.sg-meter > i { display: block; height: 100%;
+                background: var(--sg-green); border-radius: inherit; }
+
+/* ============================================================
+   CHECKBOX
+   ============================================================ */
+.sg-check { width: 18px; height: 18px; flex: none; }
+
+/* ============================================================
+   RANGE / SLIDER (FUERZA / DIRECCIÓN)
+   ============================================================ */
+.sg-track { position: relative; height: 6px; border-radius: var(--sg-r-pill);
+            background: var(--sg-bg-2); box-shadow: inset 0 0 0 1px var(--sg-line-soft); }
+.sg-track > b { position: absolute; top: -4px; width: 6px; height: 14px;
+                border-radius: 3px; background: var(--sg-green); }
